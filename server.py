@@ -53,7 +53,7 @@ def get_circle(requested_circle_id: uuid.UUID) -> Circle | None:
     return None
 
 
-def find_peer(circle_id: uuid.UUID, member_id: str) -> CircleMember | None:
+def get_circle_member(circle_id: uuid.UUID, member_id: str) -> CircleMember | None:
     circle = get_circle(circle_id)
 
     if not circle:
@@ -68,6 +68,7 @@ def find_peer(circle_id: uuid.UUID, member_id: str) -> CircleMember | None:
 
 @socketio.on_error()
 def error_handler(e):
+    print(f"Error while doing something {e}")
     pass
 
 
@@ -97,9 +98,25 @@ def on_join():
 
 
 @socketio.on("disconnect")
-def on_disconnect():
+def on_disconnect(_):
     query_params = request.args
-    print(f"received connection request with query_params {query_params}")
+    requested_circle_id = uuid.UUID(query_params.get("circleId"))
+    peer_sid = request.sid  # type: ignore
+
+    print(f"Peer with id {peer_sid} left circle with id {requested_circle_id}")
+
+    # unclean but whatever
+    circle = get_circle(requested_circle_id)
+
+    if not circle:
+        raise Exception("No member found for disconnection request")
+
+    room_id = str(circle.id)
+    leave_room(room_id)
+    circle.remove_member(peer_sid)
+
+    # probably we should emit something here but who knows
+    # emit("newRoomMember", new_member.id, to=room_id, include_self=False)
 
 
 @socketio.on("leaveCircle")
@@ -115,6 +132,61 @@ def on_leave(leaving_peer_id, requested_circle_id):
 
     leave_room(circle.id)
     circle.remove_member(leaving_peer_id)
+
+
+@socketio.on("sendOffer")
+def on_new_offer(to_peer_id, offer):
+    from_peer_id = request.sid  # type: ignore
+    query_params = request.args
+    circle_id = uuid.UUID(query_params.get("circleId"))
+
+    print(f"Peer with id {from_peer_id} sending offer to peer with id {to_peer_id}")
+    circle_member = get_circle_member(circle_id, to_peer_id)
+
+    if not circle_member:
+        print("No circle member found with given peer id")
+        raise Exception("No circle member found with given peer id")
+
+    emit("newOffer", {"fromPeerId": from_peer_id, "offer": offer}, to=to_peer_id)
+
+
+@socketio.on("sendAnswer")
+def on_new_answer(to_peer_id, answer):
+    from_peer_id = request.sid  # type: ignore
+    query_params = request.args
+    circle_id = uuid.UUID(query_params.get("circleId"))
+
+    print(f"Peer with id {from_peer_id} sending answer to peer with id {to_peer_id}")
+    circle_member = get_circle_member(circle_id, to_peer_id)
+
+    if not circle_member:
+        print("No circle member found with given peer id")
+        raise Exception("No circle member found with given peer id")
+
+    emit("newAnswer", {"fromPeerId": from_peer_id, "answer": answer}, to=to_peer_id)
+
+
+@socketio.on("sendIceCandidate")
+def on_new_ice_candidate(to_peer_id, iceCandidate):
+    from_peer_id = request.sid  # type: ignore
+    query_params = request.args
+    circle_id = uuid.UUID(query_params.get("circleId"))
+
+    print(
+        f"Peer with id {from_peer_id} sending ice candidate to peer with id {to_peer_id}"
+    )
+
+    circle_member = get_circle_member(circle_id, to_peer_id)
+
+    if not circle_member:
+        print("No circle member found with given peer id")
+        raise Exception("No circle member found with given peer id")
+
+    emit(
+        "newIceCandidate",
+        {"fromPeerId": from_peer_id, "newIceCandidate": iceCandidate},
+        to=to_peer_id,
+    )
 
 
 # ADMIN ENDPOINTS
