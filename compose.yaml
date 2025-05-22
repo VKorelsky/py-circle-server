@@ -2,9 +2,6 @@ services:
   server:
     build:
       context: .
-    environment:
-      FLASK_DEBUG: 1
-      FLASK_ENV: development
-      FLASK_APP: server.py
+    stop_signal: SIGINT
     ports:
       - 5678:5678
