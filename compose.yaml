@@ -1,0 +1,10 @@
+services:
+  server:
+    build:
+      context: .
+    environment:
+      FLASK_DEBUG: 1
+      FLASK_ENV: development
+      FLASK_APP: server.py
+    ports:
+      - 5678:5678
