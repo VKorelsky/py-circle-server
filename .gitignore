@@ -14,3 +14,6 @@ wheels/
 
 # todo file
 todo.md
+
+# macos
+.DS_Store

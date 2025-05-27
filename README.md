@@ -5,9 +5,9 @@
 ## Usage
 
 1. Install [UV](https://docs.astral.sh/uv/)
-2. `$ uv run server.py`
+2. `$ uv run server`
 
-### Websocket events
+### Socket.io events
 
 ### Client to server
 
