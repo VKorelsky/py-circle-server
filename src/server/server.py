@@ -1,17 +1,3 @@
-#!/usr/bin/env -S uv run --script
-
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "eventlet>=0.39.1",
-#     "flask>=3.1.0",
-#     "flask-cors>=5.0.1",
-#     "flask-socketio>=5.5.1",
-# ]
-# [tool.uv]
-# exclude-newer = "2025-05-21T00:00:00Z"
-# ///
-
 import uuid
 
 from flask import Flask, request
@@ -82,25 +68,37 @@ def get_circle_member(circle_id: uuid.UUID, member_id: str) -> CircleMember | No
 
 @socketio.on_error()
 def error_handler(e):
-    print(f"Error while doing something {e}")
+    print(f"Socket.IO error occurred: {str(e)}")
     pass
 
 
 @socketio.on("connect")
 def on_join():
     query_params = request.args
-    requested_circle_id = uuid.UUID(query_params.get("circleId"))
+    circle_id_str = query_params.get("circleId")
     peer_sid = request.sid  # type: ignore
-
-    print(
-        f"Peer with id {peer_sid} requested to join circle with id {requested_circle_id}"
-    )
+    
+    if not circle_id_str:
+        print("No circle id provided")
+        raise Exception("circleId is required")
+        
+    try:
+        requested_circle_id = uuid.UUID(circle_id_str)
+    except ValueError as e:
+        print(f"Invalid circleId format: {circle_id_str}")
+        raise Exception(f"Invalid circleId format: {e}")
+    
+    peer_sid = request.sid
 
     circle = get_circle(requested_circle_id)
 
     if circle is None:
         # question around exception handling in the websockets - how does that work?
         raise Exception("No circle found")
+    
+    print(
+        f"Peer with id {peer_sid} requested to join circle with id {requested_circle_id}"
+    )
 
     new_member = CircleMember(peer_sid)
 
@@ -114,23 +112,31 @@ def on_join():
 @socketio.on("disconnect")
 def on_disconnect(_):
     query_params = request.args
-    requested_circle_id = uuid.UUID(query_params.get("circleId"))
-    peer_sid = request.sid  # type: ignore
+    circle_id_str = query_params.get("circleId")
+    
+    if not circle_id_str:
+        print("No circleId provided in query parameters")
+        return  
+    
+    try:
+        requested_circle_id = uuid.UUID(circle_id_str)
+    except ValueError as e:
+        print(f"Invalid circleId format on disconnect: {circle_id_str}")
+        return 
+    
+    peer_sid = request.sid
 
     print(f"Peer with id {peer_sid} left circle with id {requested_circle_id}")
 
-    # unclean but whatever
     circle = get_circle(requested_circle_id)
 
     if not circle:
-        raise Exception("No member found for disconnection request")
+        print("No circle found for disconnection request")
+        return  # Gracefully handle missing circle
 
     room_id = str(circle.id)
     leave_room(room_id)
     circle.remove_member(peer_sid)
-
-    # probably we should emit something here but who knows
-    # emit("newRoomMember", new_member.id, to=room_id, include_self=False)
 
 
 @socketio.on("leaveCircle")
@@ -237,5 +243,9 @@ def show_circle(circle_id: str):
     return {"circle_id": circle.id, "members": [member.id for member in circle.members]}
 
 
-if __name__ == "__main__":
+def main():
     socketio.run(app, debug=True, host="0.0.0.0", port=5678)
+
+
+if __name__ == "__main__":
+    main()

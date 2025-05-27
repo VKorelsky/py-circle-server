@@ -270,12 +270,16 @@ wheels = [
 [[package]]
 name = "sss"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "eventlet" },
     { name = "flask" },
     { name = "flask-cors" },
     { name = "flask-socketio" },
+]
+
+[package.dev-dependencies]
+dev = [
     { name = "pytest" },
 ]
 
@@ -285,8 +289,10 @@ requires-dist = [
     { name = "flask", specifier = ">=3.1.0" },
     { name = "flask-cors", specifier = ">=5.0.1" },
     { name = "flask-socketio", specifier = ">=5.5.1" },
-    { name = "pytest", specifier = ">=0.39.1" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "pytest", specifier = ">=8.3.5" }]
 
 [[package]]
 name = "werkzeug"
