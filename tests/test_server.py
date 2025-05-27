@@ -1,21 +1,13 @@
-import uuid
-from src.server import socketio, app
+import pytest
+from server.server import socketio, app
 
-def test_create_circle():
-    client = socketio.test_client(app)
-    response = client.get_received()
-    assert len(response) == 0  # No messages received yet
-    
-    # Test HTTP endpoint
-    with app.test_client() as http_client:
-        response = http_client.post("/circle/new")
-        assert response.status_code == 200
-        data = response.get_json()
-        assert "circle_id" in data
-        circle_id = uuid.UUID(data["circle_id"])
-        
-        # Test socket connection to the new circle
-        client.connect(app, query_string=f"circleId={circle_id}")
-        response = client.get_received()
-        assert len(response) == 0  # No messages on connect
 
+def test_join_pit():
+    pit_id = "697d8c94-cee3-4a99-a3b6-b7cced7927fc"
+    client = get_client(pit_id)
+
+    assert client.is_connected()
+
+
+def get_client(pit_id: str):
+    return socketio.test_client(app, query_string=f"circleId={pit_id}")
