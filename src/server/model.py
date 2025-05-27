@@ -1,24 +1,24 @@
 import uuid
 
-class CircleMember:
+class PitMember:
     id: str
 
     def __init__(self, socket_id):
         self.id = socket_id
 
     def __str__(self):
-        return f"CircleMember(id={self.id})"
+        return f"PitMember(id={self.id})"
 
 
-class Circle:
+class Pit:
     id: uuid.UUID
-    members: list[CircleMember]
+    members: list[PitMember]
 
     def __init__(self, id=uuid.uuid4()):
         self.id = id
         self.members = []
 
-    def add_member(self, new_member: CircleMember):
+    def add_member(self, new_member: PitMember):
         self.members.append(new_member)
 
     def remove_member(self, member_id: str):
@@ -26,29 +26,28 @@ class Circle:
 
     def __str__(self):
         return (
-            f"Circle(id={str(self.id)}, members="
+            f"Pit(id={str(self.id)}, members="
             + str([str(member) for member in self.members])
             + ")"
         )
     
-world = Circle(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
+# World now contains multiple pits
+world: list[Pit] = []
 
-# this should really be hashmaps
-def get_circle(requested_circle_id: uuid.UUID) -> Circle | None:
-    for circle in world:
-        if circle.id == requested_circle_id:
-            return circle
-
+def get_pit(requested_pit_id: uuid.UUID) -> Pit | None:
+    for pit in world:
+        if pit.id == requested_pit_id:
+            return pit
     return None
 
 
-def get_circle_member(circle_id: uuid.UUID, member_id: str) -> CircleMember | None:
-    circle = get_circle(circle_id)
+def get_pit_member(pit_id: uuid.UUID, member_id: str) -> PitMember | None:
+    pit = get_pit(pit_id)
 
-    if not circle:
+    if not pit:
         return None
 
-    for member in circle.members:
+    for member in pit.members:
         if str(member.id) == member_id:
             return member
 

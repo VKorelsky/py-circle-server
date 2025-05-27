@@ -2,9 +2,9 @@ import uuid
 
 from flask import Flask, request
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, join_room, leave_room, send
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
-from server.model import Circle, CircleMember, world, get_circle_member
+from server.model import Pit, PitMember, world, get_pit, get_pit_member
 
 app = Flask(__name__)
 CORS(app, resources=r"/*", origins="*")
@@ -18,174 +18,190 @@ def error_handler(e):
 
 
 @socketio.on("connect")
-def on_join():
-    query_params = request.args
-    circle_id_str = query_params.get("circleId")
-    peer_sid = request.sid  # type: ignore
-
-    if not circle_id_str:
-        print("No circle id provided")
-        raise Exception("circleId is required")
-
-    try:
-        requested_circle_id = uuid.UUID(circle_id_str)
-    except ValueError as e:
-        print(f"Invalid circleId format: {circle_id_str}")
-        raise Exception(f"Invalid circleId format: {e}")
-
+def on_connect():
     peer_sid = request.sid
-
-    circle = get_circle(requested_circle_id)
-
-    if circle is None:
-        # question around exception handling in the websockets - how does that work?
-        raise Exception("No circle found")
-
-    print(
-        f"Peer with id {peer_sid} requested to join circle with id {requested_circle_id}"
-    )
-
-    new_member = CircleMember(peer_sid)
-
-    room_id = str(circle.id)
-    join_room(room_id)
-    circle.add_member(new_member)
-
-    emit("newRoomMember", new_member.id, to=room_id, include_self=False)
+    print(f"Peer {peer_sid} connected")
 
 
 @socketio.on("disconnect")
-def on_disconnect(_):
-    query_params = request.args
-    circle_id_str = query_params.get("circleId")
-
-    if not circle_id_str:
-        print("No circleId provided in query parameters")
-        return
-
-    try:
-        requested_circle_id = uuid.UUID(circle_id_str)
-    except ValueError as e:
-        print(f"Invalid circleId format on disconnect: {circle_id_str}")
-        return
-
+def on_disconnect():
     peer_sid = request.sid
+    print(f"Peer {peer_sid} disconnected")
+    
+    # Remove from all pits
+    for pit in world:
+        if any(member.id == peer_sid for member in pit.members):
+            pit.remove_member(peer_sid)
+            room_id = str(pit.id)
+            leave_room(room_id)
+            emit("room_member_left", {"leaving_peer_id": peer_sid}, to=room_id)
 
-    print(f"Peer with id {peer_sid} left circle with id {requested_circle_id}")
 
-    circle = get_circle(requested_circle_id)
+# Pit Management Events
+@socketio.on("message")
+def handle_message(data):
+    """Handle Socket.IO messages with action-based routing"""
+    action = data.get("action")
+    peer_sid = request.sid
+    
+    if action == "create_pit":
+        handle_create_pit(peer_sid)
+    elif action == "join_pit":
+        pit_id = data.get("pit_id")
+        handle_join_pit(peer_sid, pit_id)
+    elif action == "leave_pit":
+        handle_leave_pit(peer_sid)
+    elif action == "send_offer":
+        to_peer_id = data.get("to_peer_id")
+        payload = data.get("payload")
+        handle_send_offer(peer_sid, to_peer_id, payload)
+    elif action == "send_answer":
+        to_peer_id = data.get("to_peer_id")
+        payload = data.get("payload")
+        handle_send_answer(peer_sid, to_peer_id, payload)
+    elif action == "send_ice_candidate":
+        to_peer_id = data.get("to_peer_id")
+        payload = data.get("payload")
+        handle_send_ice_candidate(peer_sid, to_peer_id, payload)
+    else:
+        print(f"Unknown action: {action}")
 
-    if not circle:
-        print("No circle found for disconnection request")
-        return  # Gracefully handle missing circle
 
-    room_id = str(circle.id)
+def handle_create_pit(peer_sid: str):
+    """Create a new pit and join the creator to it"""
+    new_pit = Pit()
+    world.append(new_pit)
+    
+    new_member = PitMember(peer_sid)
+    new_pit.add_member(new_member)
+    
+    room_id = str(new_pit.id)
+    join_room(room_id)
+    
+    print(f"Created new pit {new_pit.id} with creator {peer_sid}")
+    
+    # Send pit_id back to creator
+    emit("pit_created", {"pit_id": str(new_pit.id)})
+
+
+def handle_join_pit(peer_sid: str, pit_id: str):
+    """Join an existing pit"""
+    if not pit_id:
+        emit("error", {"message": "pit_id is required"})
+        return
+    
+    try:
+        requested_pit_id = uuid.UUID(pit_id)
+    except ValueError:
+        emit("error", {"message": "Invalid pit_id format"})
+        return
+    
+    pit = get_pit(requested_pit_id)
+    if not pit:
+        emit("error", {"message": "Pit not found"})
+        return
+    
+    # Check if already in pit
+    if any(member.id == peer_sid for member in pit.members):
+        emit("error", {"message": "Already in pit"})
+        return
+    
+    new_member = PitMember(peer_sid)
+    pit.add_member(new_member)
+    
+    room_id = str(pit.id)
+    join_room(room_id)
+    
+    print(f"Peer {peer_sid} joined pit {pit_id}")
+    
+    # Notify others in the pit
+    emit("new_room_member", {"new_peer_id": peer_sid}, to=room_id, include_self=False)
+    
+    # Confirm join to the joiner
+    emit("pit_joined", {"pit_id": pit_id})
+
+
+def handle_leave_pit(peer_sid: str):
+    """Leave current pit"""
+    # Find which pit the peer is in
+    current_pit = None
+    for pit in world:
+        if any(member.id == peer_sid for member in pit.members):
+            current_pit = pit
+            break
+    
+    if not current_pit:
+        emit("error", {"message": "Not in any pit"})
+        return
+    
+    current_pit.remove_member(peer_sid)
+    room_id = str(current_pit.id)
     leave_room(room_id)
-    circle.remove_member(peer_sid)
+    
+    print(f"Peer {peer_sid} left pit {current_pit.id}")
+    
+    # Notify others in the pit
+    emit("room_member_left", {"leaving_peer_id": peer_sid}, to=room_id)
+    
+    # Confirm leave to the leaver
+    emit("pit_left", {"pit_id": str(current_pit.id)})
 
 
-@socketio.on("leaveCircle")
-def on_leave(leaving_peer_id, requested_circle_id):
-    print(
-        f"Peer with id {leaving_peer_id} requested to leave circle with id {requested_circle_id}"
-    )
-
-    circle = get_circle(requested_circle_id)
-
-    if circle is None:
-        raise Exception("No circle found")
-
-    leave_room(circle.id)
-    circle.remove_member(leaving_peer_id)
-
-
-@socketio.on("sendOffer")
-def on_new_offer(to_peer_id, offer):
-    from_peer_id = request.sid  # type: ignore
-    query_params = request.args
-    circle_id = uuid.UUID(query_params.get("circleId"))
-
-    print(f"Peer with id {from_peer_id} sending offer to peer with id {to_peer_id}")
-    circle_member = get_circle_member(circle_id, to_peer_id)
-
-    if not circle_member:
-        print("No circle member found with given peer id")
-        raise Exception("No circle member found with given peer id")
-
-    emit("newOffer", {"fromPeerId": from_peer_id, "offer": offer}, to=to_peer_id)
+# WebRTC Event Handlers
+def handle_send_offer(from_peer_id: str, to_peer_id: str, payload):
+    """Handle WebRTC offer"""
+    if not to_peer_id or not payload:
+        emit("error", {"message": "to_peer_id and payload are required"})
+        return
+    
+    # Find pit containing both peers
+    pit = find_pit_with_peer(from_peer_id)
+    if not pit or not get_pit_member(pit.id, to_peer_id):
+        emit("error", {"message": "Peers not in same pit"})
+        return
+    
+    print(f"Peer {from_peer_id} sending offer to {to_peer_id}")
+    emit("newOffer", {"fromPeerId": from_peer_id, "offer": payload}, to=to_peer_id)
 
 
-@socketio.on("sendAnswer")
-def on_new_answer(to_peer_id, answer):
-    from_peer_id = request.sid  # type: ignore
-    query_params = request.args
-    circle_id = uuid.UUID(query_params.get("circleId"))
-
-    print(f"Peer with id {from_peer_id} sending answer to peer with id {to_peer_id}")
-    circle_member = get_circle_member(circle_id, to_peer_id)
-
-    if not circle_member:
-        print("No circle member found with given peer id")
-        raise Exception("No circle member found with given peer id")
-
-    emit("newAnswer", {"fromPeerId": from_peer_id, "answer": answer}, to=to_peer_id)
-
-
-@socketio.on("sendIceCandidate")
-def on_new_ice_candidate(to_peer_id, iceCandidate):
-    from_peer_id = request.sid  # type: ignore
-    query_params = request.args
-    circle_id = uuid.UUID(query_params.get("circleId"))
-
-    print(
-        f"Peer with id {from_peer_id} sending ice candidate to peer with id {to_peer_id}"
-    )
-
-    circle_member = get_circle_member(circle_id, to_peer_id)
-
-    if not circle_member:
-        print("No circle member found with given peer id")
-        raise Exception("No circle member found with given peer id")
-
-    emit(
-        "newIceCandidate",
-        {"fromPeerId": from_peer_id, "newIceCandidate": iceCandidate},
-        to=to_peer_id,
-    )
+def handle_send_answer(from_peer_id: str, to_peer_id: str, payload):
+    """Handle WebRTC answer"""
+    if not to_peer_id or not payload:
+        emit("error", {"message": "to_peer_id and payload are required"})
+        return
+    
+    # Find pit containing both peers
+    pit = find_pit_with_peer(from_peer_id)
+    if not pit or not get_pit_member(pit.id, to_peer_id):
+        emit("error", {"message": "Peers not in same pit"})
+        return
+    
+    print(f"Peer {from_peer_id} sending answer to {to_peer_id}")
+    emit("newAnswer", {"fromPeerId": from_peer_id, "answer": payload}, to=to_peer_id)
 
 
-# ADMIN ENDPOINTS
-@app.post("/circle/new")
-def create_circle():
-    circle = Circle()
-    world.append(circle)
-
-    print(f"creating new circle {circle}")
-    print(world)
-
-    return {"circle_id": circle.id}
-
-
-@app.post("/circle/<circle_id>/broadcast")
-def broadcast(circle_id: str):
-    circle = get_circle(uuid.UUID(circle_id))
-
-    if circle is None:
-        return {}, 404
-
-    emit("newRoomMember", {"new_member_id": 123}, to=str(circle.id))
-    return {}, 200
+def handle_send_ice_candidate(from_peer_id: str, to_peer_id: str, payload):
+    """Handle WebRTC ICE candidate"""
+    if not to_peer_id or not payload:
+        emit("error", {"message": "to_peer_id and payload are required"})
+        return
+    
+    # Find pit containing both peers
+    pit = find_pit_with_peer(from_peer_id)
+    if not pit or not get_pit_member(pit.id, to_peer_id):
+        emit("error", {"message": "Peers not in same pit"})
+        return
+    
+    print(f"Peer {from_peer_id} sending ICE candidate to {to_peer_id}")
+    emit("newIceCandidate", {"fromPeerId": from_peer_id, "newIceCandidate": payload}, to=to_peer_id)
 
 
-@app.get("/circle/<circle_id>")
-def get_circle(circle_id: str):
-    print(f"requested circle with id {circle_id}")
-    circle = get_circle(uuid.UUID(circle_id))
-
-    if circle is None:
-        return {}, 404
-
-    return {"circle_id": circle.id, "members": [member.id for member in circle.members]}
+def find_pit_with_peer(peer_id: str) -> Pit | None:
+    """Find the pit containing the given peer"""
+    for pit in world:
+        if any(member.id == peer_id for member in pit.members):
+            return pit
+    return None
 
 
 def main():
