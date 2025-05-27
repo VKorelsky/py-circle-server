@@ -1,17 +1,3 @@
-#!/usr/bin/env -S uv run --script
-
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "eventlet>=0.39.1",
-#     "flask>=3.1.0",
-#     "flask-cors>=5.0.1",
-#     "flask-socketio>=5.5.1",
-# ]
-# [tool.uv]
-# exclude-newer = "2025-05-21T00:00:00Z"
-# ///
-
 import uuid
 
 from flask import Flask, request
@@ -237,5 +223,9 @@ def show_circle(circle_id: str):
     return {"circle_id": circle.id, "members": [member.id for member in circle.members]}
 
 
-if __name__ == "__main__":
+def main():
     socketio.run(app, debug=True, host="0.0.0.0", port=5678)
+
+
+if __name__ == "__main__":
+    main()
