@@ -1,7 +1,6 @@
 from server.server import socketio, app
 
 def test_create_pit():
-    """Test creating a pit via Socket.IO"""
     client = get_socket_io_client()
     
     # Send create_pit message
@@ -27,7 +26,6 @@ def test_create_pit():
 
 
 def test_join_pit():
-    """Test joining an existing pit"""
     # First create a pit
     creator_client = get_socket_io_client()
     creator_client.emit("message", {"action": "create_pit"})
@@ -69,7 +67,6 @@ def test_join_pit():
 
 
 def test_leave_pit():
-    """Test leaving a pit"""
     # Create pit and join
     client = get_socket_io_client()
     client.emit("message", {"action": "create_pit"})
@@ -93,7 +90,6 @@ def test_leave_pit():
 
 
 def test_webrtc_offer():
-    """Test WebRTC offer exchange"""
     # Create pit with two clients
     client1 = get_socket_io_client()
     client2 = get_socket_io_client()

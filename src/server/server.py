@@ -4,7 +4,7 @@ from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 
-from server.model import Pit, PitMember, world, get_pit, get_pit_member
+from server.model import Pit, PitMember, get_pit, get_pit_member, world
 
 app = Flask(__name__)
 CORS(app, resources=r"/*", origins="*")
@@ -27,7 +27,7 @@ def on_connect():
 def on_disconnect():
     peer_sid = request.sid
     print(f"Peer {peer_sid} disconnected")
-    
+
     # Remove from all pits
     for pit in world:
         if any(member.id == peer_sid for member in pit.members):
@@ -43,7 +43,7 @@ def handle_message(data):
     """Handle Socket.IO messages with action-based routing"""
     action = data.get("action")
     peer_sid = request.sid
-    
+
     if action == "create_pit":
         handle_create_pit(peer_sid)
     elif action == "join_pit":
@@ -71,15 +71,15 @@ def handle_create_pit(peer_sid: str):
     """Create a new pit and join the creator to it"""
     new_pit = Pit()
     world.append(new_pit)
-    
+
     new_member = PitMember(peer_sid)
     new_pit.add_member(new_member)
-    
+
     room_id = str(new_pit.id)
     join_room(room_id)
-    
+
     print(f"Created new pit {new_pit.id} with creator {peer_sid}")
-    
+
     # Send pit_id back to creator
     emit("pit_created", {"pit_id": str(new_pit.id)})
 
@@ -89,34 +89,34 @@ def handle_join_pit(peer_sid: str, pit_id: str):
     if not pit_id:
         emit("error", {"message": "pit_id is required"})
         return
-    
+
     try:
         requested_pit_id = uuid.UUID(pit_id)
     except ValueError:
         emit("error", {"message": "Invalid pit_id format"})
         return
-    
+
     pit = get_pit(requested_pit_id)
     if not pit:
         emit("error", {"message": "Pit not found"})
         return
-    
+
     # Check if already in pit
     if any(member.id == peer_sid for member in pit.members):
         emit("error", {"message": "Already in pit"})
         return
-    
+
     new_member = PitMember(peer_sid)
     pit.add_member(new_member)
-    
+
     room_id = str(pit.id)
     join_room(room_id)
-    
+
     print(f"Peer {peer_sid} joined pit {pit_id}")
-    
+
     # Notify others in the pit
     emit("new_room_member", {"new_peer_id": peer_sid}, to=room_id, include_self=False)
-    
+
     # Confirm join to the joiner
     emit("pit_joined", {"pit_id": pit_id})
 
@@ -129,20 +129,20 @@ def handle_leave_pit(peer_sid: str):
         if any(member.id == peer_sid for member in pit.members):
             current_pit = pit
             break
-    
+
     if not current_pit:
         emit("error", {"message": "Not in any pit"})
         return
-    
+
     current_pit.remove_member(peer_sid)
     room_id = str(current_pit.id)
     leave_room(room_id)
-    
+
     print(f"Peer {peer_sid} left pit {current_pit.id}")
-    
+
     # Notify others in the pit
     emit("room_member_left", {"leaving_peer_id": peer_sid}, to=room_id)
-    
+
     # Confirm leave to the leaver
     emit("pit_left", {"pit_id": str(current_pit.id)})
 
@@ -153,13 +153,13 @@ def handle_send_offer(from_peer_id: str, to_peer_id: str, payload):
     if not to_peer_id or not payload:
         emit("error", {"message": "to_peer_id and payload are required"})
         return
-    
+
     # Find pit containing both peers
     pit = find_pit_with_peer(from_peer_id)
     if not pit or not get_pit_member(pit.id, to_peer_id):
         emit("error", {"message": "Peers not in same pit"})
         return
-    
+
     print(f"Peer {from_peer_id} sending offer to {to_peer_id}")
     emit("newOffer", {"fromPeerId": from_peer_id, "offer": payload}, to=to_peer_id)
 
@@ -169,13 +169,13 @@ def handle_send_answer(from_peer_id: str, to_peer_id: str, payload):
     if not to_peer_id or not payload:
         emit("error", {"message": "to_peer_id and payload are required"})
         return
-    
+
     # Find pit containing both peers
     pit = find_pit_with_peer(from_peer_id)
     if not pit or not get_pit_member(pit.id, to_peer_id):
         emit("error", {"message": "Peers not in same pit"})
         return
-    
+
     print(f"Peer {from_peer_id} sending answer to {to_peer_id}")
     emit("newAnswer", {"fromPeerId": from_peer_id, "answer": payload}, to=to_peer_id)
 
@@ -185,15 +185,19 @@ def handle_send_ice_candidate(from_peer_id: str, to_peer_id: str, payload):
     if not to_peer_id or not payload:
         emit("error", {"message": "to_peer_id and payload are required"})
         return
-    
+
     # Find pit containing both peers
     pit = find_pit_with_peer(from_peer_id)
     if not pit or not get_pit_member(pit.id, to_peer_id):
         emit("error", {"message": "Peers not in same pit"})
         return
-    
+
     print(f"Peer {from_peer_id} sending ICE candidate to {to_peer_id}")
-    emit("newIceCandidate", {"fromPeerId": from_peer_id, "newIceCandidate": payload}, to=to_peer_id)
+    emit(
+        "newIceCandidate",
+        {"fromPeerId": from_peer_id, "newIceCandidate": payload},
+        to=to_peer_id,
+    )
 
 
 def find_pit_with_peer(peer_id: str) -> Pit | None:

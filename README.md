@@ -13,9 +13,12 @@
 
 ##### Pit management
 
-- `{"action": "create_pit" }`
-- `{"action": "join_pit", "pit_id": "1234567" }`
+- `{"action": "create_pit" }` 
+    - Server responds with `{"event": "pit_created", "pit_id": "<uuid>" }`
+- `{"action": "join_pit", "pit_id": "<uuid>" }`
+    - Server responds with `{"event": "pit_joined", "pit_id": "<uuid>" }` on success
 - `{"action": "leave_pit" }`
+    - Server responds with `{"event": "pit_left", "pit_id": "<uuid>" }` on success
 
 ##### WebRTC
 
@@ -34,3 +37,6 @@
 - `{"event": "newOffer", "fromPeerId": "peer_id", "offer": <offer_payload> }`
 - `{"event": "newAnswer", "fromPeerId": "peer_id", "answer": <answer_payload> }`
 - `{"event": "newIceCandidate", "fromPeerId": "peer_id", "newIceCandidate": <ice_candidate_payload> }`
+
+##### Errors
+- `{"event": "error", "message": "<error_message>" }` 
