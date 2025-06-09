@@ -5,38 +5,38 @@
 ## Usage
 
 1. Install [UV](https://docs.astral.sh/uv/)
-2. `$ uv run server`
+2. `$ uv run serve`
 
 ### Socket.io events
 
 ### Client to server
 
+##### Connection
+
+- Connect with query param: `?pitId=<uuid>` (auto-joins pit)
+
 ##### Pit management
 
-- message: "create_pit"
-    - Server responds with `{"event": "pit_created", "pit_id": "<uuid>" }`
-- `{"action": "join_pit", "pit_id": "<uuid>" }`
-    - Server responds with `{"event": "pit_joined", "pit_id": "<uuid>" }` on success
-- `{"action": "leave_pit" }`
-    - Server responds with `{"event": "pit_left", "pit_id": "<uuid>" }` on success
+- `joinPit` with pit_id parameter
+- `leavePit` with pit_id parameter
 
 ##### WebRTC
 
-- `{"action": "send_offer", "to_peer_id": "peer_id", "payload": <offer_payload> }`
-- `{"action": "send_answer", "to_peer_id": "peer_id", "payload": <answer_payload> }`
-- `{"action": "send_ice_candidate", "to_peer_id": "peer_id", "payload": <ice_candidate_payload> }`
+- `sendOffer` with parameters: to_peer_id, offer
+- `sendAnswer` with parameters: to_peer_id, answer  
+- `sendIceCandidate` with parameters: to_peer_id, ice_candidate
 
 ### Server to client
 
 ##### Pit management
-- `{"event": "new_room_member", "new_peer_id": "peer_id" }`
-- `{"event": "room_member_left", "leaving_peer_id": "peer_id" }`
+- `newRoomMember` with new_peer_id
+- `room_member_left` with leaving_peer_id object
 
 ##### WebRTC
 
-- `{"event": "newOffer", "fromPeerId": "peer_id", "offer": <offer_payload> }`
-- `{"event": "newAnswer", "fromPeerId": "peer_id", "answer": <answer_payload> }`
-- `{"event": "newIceCandidate", "fromPeerId": "peer_id", "newIceCandidate": <ice_candidate_payload> }`
+- `newOffer` with fromPeerId and offer
+- `newAnswer` with fromPeerId and answer
+- `newIceCandidate` with fromPeerId and newIceCandidate
 
 ##### Errors
 - `{"event": "error", "message": "<error_message>" }` 

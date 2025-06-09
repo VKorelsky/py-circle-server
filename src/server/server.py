@@ -30,9 +30,7 @@ def error_handler(e):
 @socketio.on("connect")
 def on_connect():
     query_params = request.args
-
-    # until FE renames to pitID, we will have to take params as circle id
-    pit_id = uuid.UUID(query_params.get("circleId"))
+    pit_id = uuid.UUID(query_params.get("pitId"))
     pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
 
 
