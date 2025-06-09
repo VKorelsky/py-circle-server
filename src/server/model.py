@@ -1,4 +1,7 @@
 import uuid
+from server.logger import get_logger
+
+_logger = get_logger(__name__)
 
 PitMemberId = str
 PitId = uuid.UUID
@@ -57,7 +60,7 @@ class World:
     def add_member_to_pit(self, pit_id: PitId, member: PitMember) -> None:
         pit = self.get_pit(pit_id)
         
-        print(pit)
+        _logger.debug(f"Adding member to pit: {pit}")
 
         if pit is None:
             raise ValueError(f"Pit with id {pit_id} not found")

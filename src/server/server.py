@@ -7,7 +7,9 @@ from flask_socketio import SocketIO
 from server.model import Pit, World
 from server.pit_manager import PitManager
 from server.webrtc_manager import WebRtcManager
+from server.logger import get_logger
 
+_logger = get_logger(__name__)
 app = Flask(__name__)
 CORS(app, resources=r"/*", origins="*")
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -23,7 +25,7 @@ web_rtc_manager = WebRtcManager(world)
 
 @socketio.on_error()
 def error_handler(e):
-    print(f"Socket.IO error occurred: {str(e)}")
+    _logger.error(f"Socket.IO error occurred: {str(e)}")
     pass
 
 
@@ -36,7 +38,7 @@ def on_connect():
 
 @socketio.on("disconnect")
 def on_disconnect(reason):
-    print(f"Peer disconnected with reason: {reason}")
+    _logger.info(f"Peer disconnected with reason: {reason}")
     pit_manager.handle_disconnect(request.sid)  # type: ignore
 
 
@@ -68,6 +70,7 @@ def on_send_ice_candidate(to_peer_id, ice_candidate):
     from_peer_id = request.sid  # type: ignore
     web_rtc_manager.send_ice_candidate(from_peer_id, to_peer_id, ice_candidate)
 
+
 def print_server_init_header():
     print(
         """
@@ -80,7 +83,7 @@ def print_server_init_header():
 Initializing server...
 """
     )
-    print(str(world))
+    _logger.info(f"Server initialized with world state: {str(world)}")
 
 
 def main(debug=False, host="0.0.0.0", port=5678):
