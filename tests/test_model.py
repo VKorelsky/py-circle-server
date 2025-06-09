@@ -85,7 +85,7 @@ class TestWorld:
 
     def test_add_get_pit(self, world):
         pit = self._pit()
-        
+
         world.add_pit(pit)
         result = world.get_pit(pit.id)
 
@@ -116,12 +116,18 @@ class TestWorld:
 
         assert world.get_pit_member(pit.id, "nonexistent_member") is None
 
+    def test_contains_pit(self, world):
+        pit = self._pit()
+        world.add_pit(pit)
+
+        assert pit.id in world
+
     def test_iter(self, world):
         pit1 = self._pit()
         pit2 = self._pit()
         world.add_pit(pit1)
         world.add_pit(pit2)
-        
+
         print(pit1, pit2)
 
         world_as_list = list(world)

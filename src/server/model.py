@@ -69,5 +69,5 @@ class World:
     def __len__(self):
         return len(self.pits)
 
-    def __contains__(self, pit: Pit):
-        return pit.id in self.pits
+    def __contains__(self, pit_id: PitId):
+        return pit_id in self.pits
