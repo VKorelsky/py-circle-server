@@ -7,18 +7,14 @@ class PitManager:
         self.world = world
 
     def handle_join_pit(self, new_peer_id: PitMemberId, pit_id: PitId):
-        pit = self.world.get_pit(pit_id)
-
-        if not pit:
-            raise Exception("Pit not found")
-
-        pit.add_member(PitMember(new_peer_id))
+        new_pit_member = PitMember(new_peer_id)
+        self.world.add_member_to_pit(pit_id, new_pit_member)
 
         try:
-            self._join_socket_io_room(pit.id, new_peer_id)
+            self._join_socket_io_room(pit_id, new_peer_id)
         except Exception as e:
             print(f"Error joining room: {str(e)}")
-            pit.remove_member(new_peer_id)
+            self.world.remove_member_from_pit(new_peer_id)
             raise e
 
     def handle_disconnect(self, peer_id: PitMemberId):

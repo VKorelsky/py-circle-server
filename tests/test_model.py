@@ -91,30 +91,65 @@ class TestWorld:
 
         assert result is pit
 
+    def test_add_member_to_pit(self, world):
+        pit = self._pit()
+        world.add_pit(pit)
+
+        print(str(world))
+
+        member = self._pit_member()
+        world.add_member_to_pit(pit.id, member)
+
+        assert member.id in pit
+        assert pit.get_member(member.id) is member
+        assert world.memberships[member.id] is pit
+
+    def test_add_member_to_non_existent_pit(self, world):
+        member = self._pit_member()
+        
+        with pytest.raises(ValueError):
+            world.add_member_to_pit(uuid.uuid4(), member)
+
+    def test_remove_member_from_pit(self, world):
+        pit = self._pit()
+        member = self._pit_member()
+        world.add_pit(pit)
+
+        world.add_member_to_pit(pit.id, member)
+
+        assert member.id in pit
+        assert pit.get_member(member.id) is member
+        assert world.memberships[member.id] is pit
+
+        world.remove_member_from_pit(member.id)
+
+        assert member.id not in pit
+        assert pit.get_member(member.id) is None
+        assert member.id not in world.memberships
+
     def test_get_pit_not_exists(self, world):
         nonexistent_id = uuid.uuid4()
         assert world.get_pit(nonexistent_id) is None
 
-    def test_get_pit_member_exists(self, world):
-        pit = self._pit()
-        member = self._pit_member()
-        pit.add_member(member)
-        world.add_pit(pit)
+    def test_get_pit_by_pit_member(self, world):
+        first_pit = self._pit()
+        second_pit = self._pit()
+        first_member = self._pit_member()
+        second_member = self._pit_member()
 
-        assert world.get_pit_member(pit.id, member.id) is member
+        world.add_pit(first_pit)
+        world.add_pit(second_pit)
 
-    def test_get_pit_member_pit_not_exists(self, world):
-        nonexistent_pit_id = uuid.uuid4()
-        nonexistent_pit_member_id = uuid.uuid4()
+        world.add_member_to_pit(first_pit.id, first_member)
+        world.add_member_to_pit(second_pit.id, second_member)
 
-        assert (
-            world.get_pit_member(nonexistent_pit_id, nonexistent_pit_member_id) is None
-        )
+        assert world.get_pit_by_pit_member(first_member.id) is first_pit
+        assert world.get_pit_by_pit_member(second_member.id) is second_pit
 
-        pit = self._pit()
-        world.add_pit(pit)
+    def test_get_pit_by_pit_member_not_exists(self, world):
+        nonexistent_pit_member_id = str(uuid.uuid4())
 
-        assert world.get_pit_member(pit.id, "nonexistent_member") is None
+        assert world.get_pit_by_pit_member(nonexistent_pit_member_id) is None
 
     def test_contains_pit(self, world):
         pit = self._pit()
