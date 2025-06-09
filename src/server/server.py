@@ -1,4 +1,5 @@
 import uuid
+import argparse
 from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO
@@ -15,19 +16,6 @@ world = World()
 # hardcode a pit for testing
 pit = Pit(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
 world.add_pit(pit)
-
-print("")
-print("""
-  _____  _____  _____             ____
- / ____|/ ____|/ ____|           / . .\\
-| (___ | (___ | (___           \\  ---<
- \___ \ \___ \ \___ \             \\  /
- ____) |____) |____) |   __________/ /
-|_____/|_____/|_____/  -=:___________/
-""")
-print("Initializing server...")
-print(str(world))
-print("")
 
 pit_manager = PitManager(world)
 web_rtc_manager = WebRtcManager(world)
@@ -82,10 +70,29 @@ def on_send_ice_candidate(to_peer_id, ice_candidate):
     from_peer_id = request.sid  # type: ignore
     web_rtc_manager.send_ice_candidate(from_peer_id, to_peer_id, ice_candidate)
 
+def print_server_init_header():
+    print(
+        """
+ _____  _____  _____  _____                               
+/  ___|/  ___|/  ___|/  ___|                              
+\\ `--. \\ `--. \\ `--. \\ `--.   ___  _ __ __   __ ___  _ __ 
+ `--. \\ `--. \\ `--. \\ `--. \\ / _ \\| '__|\\ \\ / // _ \\| '__|
+/\\__/ //\\__/ //\\__/ //\\__/ /|  __/| |    \\ V /|  __/| |   
+\\____/ \\____/ \\____/ \\____/  \\___||_|     \\_/  \\___||_|   
+Initializing server...
+"""
+    )
+    print(str(world))
 
-def main():
-    socketio.run(app, debug=True, host="0.0.0.0", port=5678)
+
+def main(debug=False, host="0.0.0.0", port=5678):
+    print_server_init_header()
+    socketio.run(app, debug=debug, host=host, port=port)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    args = parser.parse_args()
+
+    main(args.debug)
