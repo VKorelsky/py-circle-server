@@ -2,7 +2,7 @@ import uuid
 import argparse
 from flask import Flask, request
 from flask_cors import CORS
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, emit
 
 from server.model import Pit, World
 from server.pit_manager import PitManager
@@ -26,7 +26,7 @@ web_rtc_manager = WebRtcManager(world)
 @socketio.on_error()
 def error_handler(e):
     _logger.error(f"Socket.IO error occurred: {str(e)}")
-    pass
+    emit("error", {"message": str(e)})
 
 
 @socketio.on("connect")
