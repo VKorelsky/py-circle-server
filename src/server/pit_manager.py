@@ -7,6 +7,7 @@ class PitManager:
         self.world = world
 
     def handle_join_pit(self, new_peer_id: PitMemberId, pit_id: PitId):
+        print(f"Peer {new_peer_id} joining pit {pit_id}")
         new_pit_member = PitMember(new_peer_id)
         self.world.add_member_to_pit(pit_id, new_pit_member)
 
@@ -17,13 +18,19 @@ class PitManager:
             self.world.remove_member_from_pit(new_peer_id)
             raise e
 
+        print("SOW: " + str(self.world))
+
     def handle_disconnect(self, peer_id: PitMemberId):
         print(f"Peer {peer_id} disconnected")
 
         for pit in self.world:
             if pit.get_member(peer_id):
+                print(f"Peer {peer_id} leaving pit {pit.id}")
+
                 pit.remove_member(peer_id)
                 self._leave_socket_io_room(pit.id, peer_id)
+                
+        print("SOW: " + str(self.world))
 
     def _join_socket_io_room(self, pit_id: PitId, new_peer_id: PitMemberId):
         room_id = str(pit_id)

@@ -3,7 +3,7 @@ from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO
 
-from server.model import World
+from server.model import Pit, World
 from server.pit_manager import PitManager
 from server.webrtc_manager import WebRtcManager
 
@@ -12,6 +12,23 @@ CORS(app, resources=r"/*", origins="*")
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 world = World()
+# hardcode a pit for testing
+pit = Pit(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
+world.add_pit(pit)
+
+print("")
+print("""
+  _____  _____  _____             ____
+ / ____|/ ____|/ ____|           / . .\\
+| (___ | (___ | (___           \\  ---<
+ \___ \ \___ \ \___ \             \\  /
+ ____) |____) |____) |   __________/ /
+|_____/|_____/|_____/  -=:___________/
+""")
+print("Initializing server...")
+print(str(world))
+print("")
+
 pit_manager = PitManager(world)
 web_rtc_manager = WebRtcManager(world)
 
@@ -24,22 +41,27 @@ def error_handler(e):
 
 @socketio.on("connect")
 def on_connect():
-    peer_sid = request.sid  # type: ignore
-    print(f"Peer {peer_sid} connected")
+    query_params = request.args
+
+    # until FE renames to pitID, we will have to take params as circle id
+    pit_id = uuid.UUID(query_params.get("circleId"))
+    pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
 
 
 @socketio.on("disconnect")
-def on_disconnect():
+def on_disconnect(reason):
+    print(f"Peer disconnected with reason: {reason}")
     pit_manager.handle_disconnect(request.sid)  # type: ignore
 
 
 @socketio.on("joinPit")
 def on_join_pit(pit_id):
+    pit_id = uuid.UUID(pit_id)
     pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
 
 
 @socketio.on("leavePit")
-def on_leave_pit(pit_id):
+def on_leave_pit(_pit_id):
     pit_manager.handle_disconnect(request.sid)  # type: ignore
 
 

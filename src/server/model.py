@@ -56,6 +56,8 @@ class World:
 
     def add_member_to_pit(self, pit_id: PitId, member: PitMember) -> None:
         pit = self.get_pit(pit_id)
+        
+        print(pit)
 
         if pit is None:
             raise ValueError(f"Pit with id {pit_id} not found")
