@@ -1,10 +1,11 @@
 import uuid
 
+
 class PitMember:
     id: str
 
-    def __init__(self, socket_id):
-        self.id = socket_id
+    def __init__(self, id):
+        self.id = id
 
     def __str__(self):
         return f"PitMember(id={self.id})"
@@ -12,17 +13,20 @@ class PitMember:
 
 class Pit:
     id: uuid.UUID
-    members: list[PitMember]
+    members: dict[str, PitMember]
 
     def __init__(self, id=uuid.uuid4()):
         self.id = id
-        self.members = []
+        self.members = dict()
 
     def add_member(self, new_member: PitMember):
-        self.members.append(new_member)
+        self.members[new_member.id] = new_member
 
     def remove_member(self, member_id: str):
-        self.members = [m for m in self.members if str(m.id) != member_id]
+        del self.members[member_id]
+
+    def get_member(self, member_id: str) -> PitMember | None:
+        return self.members.get(member_id)
 
     def __str__(self):
         return (
@@ -30,25 +34,20 @@ class Pit:
             + str([str(member) for member in self.members])
             + ")"
         )
-    
-# World now contains multiple pits
-world: list[Pit] = []
-
-def get_pit(requested_pit_id: uuid.UUID) -> Pit | None:
-    for pit in world:
-        if pit.id == requested_pit_id:
-            return pit
-    return None
 
 
-def get_pit_member(pit_id: uuid.UUID, member_id: str) -> PitMember | None:
-    pit = get_pit(pit_id)
+class World:
+    def __init__(self):
+        self.pits: dict[uuid.UUID, Pit] = dict()
 
-    if not pit:
-        return None
+    def get_pit(self, requested_pit_id: uuid.UUID) -> Pit | None:
+        return self.pits.get(requested_pit_id)
 
-    for member in pit.members:
-        if str(member.id) == member_id:
-            return member
+    def get_pit_member(self, pit_id: uuid.UUID, member_id: str) -> PitMember | None:
+        pit = self.get_pit(pit_id)
+        if not pit:
+            return None
+        return pit.get_member(member_id)
 
-    return None
+
+world = World()

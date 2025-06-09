@@ -13,7 +13,7 @@
 
 ##### Pit management
 
-- `{"action": "create_pit" }` 
+- message: "create_pit"
     - Server responds with `{"event": "pit_created", "pit_id": "<uuid>" }`
 - `{"action": "join_pit", "pit_id": "<uuid>" }`
     - Server responds with `{"event": "pit_joined", "pit_id": "<uuid>" }` on success
