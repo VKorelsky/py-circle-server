@@ -95,8 +95,6 @@ class TestWorld:
         pit = self._pit()
         world.add_pit(pit)
 
-        print(str(world))
-
         member = self._pit_member()
         world.add_member_to_pit(pit.id, member)
 
@@ -162,8 +160,6 @@ class TestWorld:
         pit2 = self._pit()
         world.add_pit(pit1)
         world.add_pit(pit2)
-
-        print(pit1, pit2)
 
         world_as_list = list(world)
 
