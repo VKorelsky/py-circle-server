@@ -37,8 +37,12 @@ def parse_pit_id(pit_id: str) -> uuid.UUID:
 
 
 def parse_snake_id(snake_id: str) -> SnakeId:
-    # Socket.IO SIDs are typically at most 20 characters long
-    if len(snake_id) >= 20:
+    # socket.io sids are typically 20 characters long and alphanumeric (outside of - and _ characters)
+    if (
+        not snake_id
+        or len(snake_id) > 20
+        or not snake_id.replace("-", "").replace("_", "").isalnum()
+    ):
         raise ValueError("Invalid snake ID")
 
     return SnakeId(snake_id)
