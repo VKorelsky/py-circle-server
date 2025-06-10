@@ -49,7 +49,7 @@ def on_join_pit(pit_id):
 
 
 @socketio.on("leavePit")
-def on_leave_pit(_pit_id):
+def on_leave_pit():
     pit_manager.handle_disconnect(request.sid)  # type: ignore
 
 

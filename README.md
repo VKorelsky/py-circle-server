@@ -18,7 +18,7 @@
 ##### Pit management
 
 - `joinPit` with pit_id parameter
-- `leavePit` with pit_id parameter
+- `leavePit`
 
 ##### WebRTC
 
