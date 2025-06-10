@@ -1,4 +1,5 @@
 import time
+from typing import Any, TypedDict
 
 from server.server import app, socketio
 
@@ -12,12 +13,18 @@ SEND_ICE_CANDIDATE_MESSAGE_NAME = "sendIceCandidate"
 NEW_ICE_CANDIDATE_MESSAGE_NAME = "newIceCandidate"
 
 
+class SocketIOMessage(TypedDict):
+    name: str
+    args: list[dict[str, Any]]
+    namespace: str
+
+
 class TestWebRtcIntegration:
     PIT_ID = "697d8c94-cee3-4a99-a3b6-b7cced7927fc"
 
     def _get_peer_ids_from_events(self, events):
         return [
-            event["args"][0]
+            event["args"][0]["new_peer_id"]
             for event in events
             if event["name"] == NEW_ROOM_MEMBER_MESSAGE_NAME
         ]

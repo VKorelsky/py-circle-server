@@ -18,7 +18,7 @@ class SnakePitManager:
 
         new_snake = Snake(new_snake_id)
         self._add_snake_to_world(new_snake)
-        emit("connection_success", {"id": new_snake.display_name})
+        emit("connected", {"display_name": new_snake.display_name})
 
     def handle_create_pit(self, pit_id: SnakePitId):
         self.world.create_pit(pit_id)
@@ -45,7 +45,15 @@ class SnakePitManager:
         self._add_snake_to_pit(snake, pit)
 
         try:
-            self._join_socket_io_room(pit_id, snake_id)
+            room_id = str(pit_id)
+            join_room(room_id)
+
+            emit(
+                "newRoomMember",
+                {"new_peer_id": snake_id, "new_peer_display_name": snake.display_name},
+                to=room_id,
+                include_self=False,
+            )
         except Exception as e:
             _logger.error(f"Error joining room: {str(e)}")
             self._remove_snake_from_pit(snake, pit)
@@ -63,20 +71,14 @@ class SnakePitManager:
         if maybe_pit is not None:
             self._remove_snake_from_pit(snake, maybe_pit)
 
+            room_id = str(maybe_pit.id)
+            leave_room(room_id)
+            emit("room_member_left", {"leaving_peer_id": snake_id}, to=room_id)
+
             if len(maybe_pit) == 0:
                 del self.world.pits[maybe_pit.id]
 
         _logger.debug(f"World state after disconnect: {str(self.world)}")
-
-    def _join_socket_io_room(self, pit_id: SnakePitId, new_peer_id: SnakeId):
-        room_id = str(pit_id)
-        join_room(room_id)
-        emit("newRoomMember", new_peer_id, to=room_id, include_self=False)
-
-    def _leave_socket_io_room(self, pit_id: SnakePitId, peer_id: SnakeId):
-        room_id = str(pit_id)
-        leave_room(room_id)
-        emit("room_member_left", {"leaving_peer_id": peer_id}, to=room_id)
 
     def _add_snake_to_world(self, snake: Snake):
         self.world.snakes[snake.id] = (snake, None)
