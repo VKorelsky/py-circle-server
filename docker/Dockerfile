@@ -8,4 +8,4 @@ COPY pyproject.toml ./app/
 WORKDIR /app
 RUN uv sync --locked
 
-CMD ["uv", "run", "server"]
+CMD ["uv", "run", "serve"]

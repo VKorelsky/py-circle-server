@@ -1,196 +1,99 @@
 import uuid
-
+import argparse
 from flask import Flask, request
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, join_room, leave_room, send
+from flask_socketio import SocketIO, emit
 
-from server.model import Circle, CircleMember, world, get_circle_member
+from server.model import Pit, World
+from server.pit_manager import PitManager
+from server.webrtc_manager import WebRtcManager
+from server.logger import get_logger
 
+_logger = get_logger(__name__)
 app = Flask(__name__)
 CORS(app, resources=r"/*", origins="*")
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+world = World()
+# hardcode a pit for testing
+pit = Pit(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
+world.add_pit(pit)
+
+pit_manager = PitManager(world)
+web_rtc_manager = WebRtcManager(world)
+
 
 @socketio.on_error()
 def error_handler(e):
-    print(f"Socket.IO error occurred: {str(e)}")
-    pass
+    _logger.error(f"Socket.IO error occurred: {str(e)}")
+    emit("error", {"message": str(e)})
 
 
 @socketio.on("connect")
-def on_join():
+def on_connect():
     query_params = request.args
-    circle_id_str = query_params.get("circleId")
-    peer_sid = request.sid  # type: ignore
-
-    if not circle_id_str:
-        print("No circle id provided")
-        raise Exception("circleId is required")
-
-    try:
-        requested_circle_id = uuid.UUID(circle_id_str)
-    except ValueError as e:
-        print(f"Invalid circleId format: {circle_id_str}")
-        raise Exception(f"Invalid circleId format: {e}")
-
-    peer_sid = request.sid
-
-    circle = get_circle(requested_circle_id)
-
-    if circle is None:
-        # question around exception handling in the websockets - how does that work?
-        raise Exception("No circle found")
-
-    print(
-        f"Peer with id {peer_sid} requested to join circle with id {requested_circle_id}"
-    )
-
-    new_member = CircleMember(peer_sid)
-
-    room_id = str(circle.id)
-    join_room(room_id)
-    circle.add_member(new_member)
-
-    emit("newRoomMember", new_member.id, to=room_id, include_self=False)
+    pit_id = uuid.UUID(query_params.get("pitId"))
+    pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
 
 
 @socketio.on("disconnect")
-def on_disconnect(_):
-    query_params = request.args
-    circle_id_str = query_params.get("circleId")
-
-    if not circle_id_str:
-        print("No circleId provided in query parameters")
-        return
-
-    try:
-        requested_circle_id = uuid.UUID(circle_id_str)
-    except ValueError as e:
-        print(f"Invalid circleId format on disconnect: {circle_id_str}")
-        return
-
-    peer_sid = request.sid
-
-    print(f"Peer with id {peer_sid} left circle with id {requested_circle_id}")
-
-    circle = get_circle(requested_circle_id)
-
-    if not circle:
-        print("No circle found for disconnection request")
-        return  # Gracefully handle missing circle
-
-    room_id = str(circle.id)
-    leave_room(room_id)
-    circle.remove_member(peer_sid)
+def on_disconnect(reason):
+    _logger.info(f"Peer disconnected with reason: {reason}")
+    pit_manager.handle_disconnect(request.sid)  # type: ignore
 
 
-@socketio.on("leaveCircle")
-def on_leave(leaving_peer_id, requested_circle_id):
-    print(
-        f"Peer with id {leaving_peer_id} requested to leave circle with id {requested_circle_id}"
-    )
+@socketio.on("joinPit")
+def on_join_pit(pit_id):
+    pit_id = uuid.UUID(pit_id)
+    pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
 
-    circle = get_circle(requested_circle_id)
 
-    if circle is None:
-        raise Exception("No circle found")
-
-    leave_room(circle.id)
-    circle.remove_member(leaving_peer_id)
+@socketio.on("leavePit")
+def on_leave_pit():
+    pit_manager.handle_disconnect(request.sid)  # type: ignore
 
 
 @socketio.on("sendOffer")
-def on_new_offer(to_peer_id, offer):
+def on_send_offer(to_peer_id, offer):
     from_peer_id = request.sid  # type: ignore
-    query_params = request.args
-    circle_id = uuid.UUID(query_params.get("circleId"))
-
-    print(f"Peer with id {from_peer_id} sending offer to peer with id {to_peer_id}")
-    circle_member = get_circle_member(circle_id, to_peer_id)
-
-    if not circle_member:
-        print("No circle member found with given peer id")
-        raise Exception("No circle member found with given peer id")
-
-    emit("newOffer", {"fromPeerId": from_peer_id, "offer": offer}, to=to_peer_id)
+    web_rtc_manager.send_offer(from_peer_id, to_peer_id, offer)
 
 
 @socketio.on("sendAnswer")
-def on_new_answer(to_peer_id, answer):
+def on_send_answer(to_peer_id, answer):
     from_peer_id = request.sid  # type: ignore
-    query_params = request.args
-    circle_id = uuid.UUID(query_params.get("circleId"))
-
-    print(f"Peer with id {from_peer_id} sending answer to peer with id {to_peer_id}")
-    circle_member = get_circle_member(circle_id, to_peer_id)
-
-    if not circle_member:
-        print("No circle member found with given peer id")
-        raise Exception("No circle member found with given peer id")
-
-    emit("newAnswer", {"fromPeerId": from_peer_id, "answer": answer}, to=to_peer_id)
+    web_rtc_manager.send_answer(from_peer_id, to_peer_id, answer)
 
 
 @socketio.on("sendIceCandidate")
-def on_new_ice_candidate(to_peer_id, iceCandidate):
+def on_send_ice_candidate(to_peer_id, ice_candidate):
     from_peer_id = request.sid  # type: ignore
-    query_params = request.args
-    circle_id = uuid.UUID(query_params.get("circleId"))
+    web_rtc_manager.send_ice_candidate(from_peer_id, to_peer_id, ice_candidate)
 
+
+def print_server_init_header():
     print(
-        f"Peer with id {from_peer_id} sending ice candidate to peer with id {to_peer_id}"
+        """
+ _____  _____  _____  _____                               
+/  ___|/  ___|/  ___|/  ___|                              
+\\ `--. \\ `--. \\ `--. \\ `--.   ___  _ __ __   __ ___  _ __ 
+ `--. \\ `--. \\ `--. \\ `--. \\ / _ \\| '__|\\ \\ / // _ \\| '__|
+/\\__/ //\\__/ //\\__/ //\\__/ /|  __/| |    \\ V /|  __/| |   
+\\____/ \\____/ \\____/ \\____/  \\___||_|     \\_/  \\___||_|   
+Initializing server...
+"""
     )
-
-    circle_member = get_circle_member(circle_id, to_peer_id)
-
-    if not circle_member:
-        print("No circle member found with given peer id")
-        raise Exception("No circle member found with given peer id")
-
-    emit(
-        "newIceCandidate",
-        {"fromPeerId": from_peer_id, "newIceCandidate": iceCandidate},
-        to=to_peer_id,
-    )
+    _logger.info(f"Server initialized with world state: {str(world)}")
 
 
-# ADMIN ENDPOINTS
-@app.post("/circle/new")
-def create_circle():
-    circle = Circle()
-    world.append(circle)
-
-    print(f"creating new circle {circle}")
-    print(world)
-
-    return {"circle_id": circle.id}
-
-
-@app.post("/circle/<circle_id>/broadcast")
-def broadcast(circle_id: str):
-    circle = get_circle(uuid.UUID(circle_id))
-
-    if circle is None:
-        return {}, 404
-
-    emit("newRoomMember", {"new_member_id": 123}, to=str(circle.id))
-    return {}, 200
-
-
-@app.get("/circle/<circle_id>")
-def get_circle(circle_id: str):
-    print(f"requested circle with id {circle_id}")
-    circle = get_circle(uuid.UUID(circle_id))
-
-    if circle is None:
-        return {}, 404
-
-    return {"circle_id": circle.id, "members": [member.id for member in circle.members]}
-
-
-def main():
-    socketio.run(app, debug=True, host="0.0.0.0", port=5678)
+def main(debug=False, host="0.0.0.0", port=5678):
+    print_server_init_header()
+    socketio.run(app, debug=debug, host=host, port=port)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    args = parser.parse_args()
+
+    main(args.debug)
