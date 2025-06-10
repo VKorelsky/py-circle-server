@@ -165,7 +165,6 @@ class TestWebRtcIntegration:
 
         # verify
         error_events = self._get_events_by_name(client1, "error")
-        print(f"ERROR EVENTS: {error_events}")
         assert len(error_events) == 1
 
     def test_webrtc_error_handling_for_invalid_peer_id(self):

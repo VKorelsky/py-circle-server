@@ -1,7 +1,6 @@
 from flask_socketio import emit, join_room, leave_room
-from server.model import SnakePit, SnakePitId, Snake, Snake, World
+from server.model import SnakePit, SnakePitId, Snake, SnakeId, World
 from server.logger import get_logger
-from server.model.snake import SnakeId
 
 _logger = get_logger(__name__)
 
