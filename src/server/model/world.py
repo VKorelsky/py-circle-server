@@ -1,18 +1,12 @@
-from server.logger import get_logger
-
 from server.model.snake import Snake, Snake, SnakeId
 from server.model.snake_pit import SnakePit, SnakePitId
 from typing import Tuple
-
-_logger = get_logger(__name__)
-
 
 SnakePitState = Tuple[Snake, SnakePit | None]
 
 
 class World:
     def __init__(self):
-        # bookeeping for easier querying of pits and snakes
         self.pits: dict[SnakePitId, SnakePit] = dict()
         self.snakes: dict[SnakeId, SnakePitState] = dict()
 
