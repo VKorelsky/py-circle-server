@@ -1,15 +1,22 @@
 import time
+from typing import Any, TypedDict
 
 from server.server import app, socketio
 
-NEW_ROOM_MEMBER_MESSAGE_NAME = "newRoomMember"
-JOIN_PIT_MESSAGE_NAME = "joinPit"
-SEND_OFFER_MESSAGE_NAME = "sendOffer"
-NEW_OFFER_MESSAGE_NAME = "newOffer"
-SEND_ANSWER_MESSAGE_NAME = "sendAnswer"
-NEW_ANSWER_MESSAGE_NAME = "newAnswer"
-SEND_ICE_CANDIDATE_MESSAGE_NAME = "sendIceCandidate"
-NEW_ICE_CANDIDATE_MESSAGE_NAME = "newIceCandidate"
+NEW_ROOM_MEMBER_MESSAGE_NAME = "new_room_member"
+JOIN_PIT_MESSAGE_NAME = "join_snake_pit"
+SEND_OFFER_MESSAGE_NAME = "send_offer"
+NEW_OFFER_MESSAGE_NAME = "new_offer"
+SEND_ANSWER_MESSAGE_NAME = "send_answer"
+NEW_ANSWER_MESSAGE_NAME = "new_answer"
+SEND_ICE_CANDIDATE_MESSAGE_NAME = "send_ice_candidate"
+NEW_ICE_CANDIDATE_MESSAGE_NAME = "new_ice_candidate"
+
+
+class SocketIOMessage(TypedDict):
+    name: str
+    args: list[dict[str, Any]]
+    namespace: str
 
 
 class TestWebRtcIntegration:
@@ -17,12 +24,12 @@ class TestWebRtcIntegration:
 
     def _get_peer_ids_from_events(self, events):
         return [
-            event["args"][0]
+            event["args"][0]["new_peer_id"]
             for event in events
             if event["name"] == NEW_ROOM_MEMBER_MESSAGE_NAME
         ]
 
-    def _create_client(self):
+    def _create_and_connect_client(self):
         client = socketio.test_client(app)
         client.get_received()  # Clear initial connection events to avoid interference with test assertions
         return client
@@ -36,8 +43,8 @@ class TestWebRtcIntegration:
 
     def test_exchange_offer_answer(self):
         # setup
-        client1 = self._create_client()
-        client2 = self._create_client()
+        client1 = self._create_and_connect_client()
+        client2 = self._create_and_connect_client()
 
         self._join_pit(client1, self.PIT_ID)
         time.sleep(0.01)  # avoid out of order joining
@@ -80,8 +87,8 @@ class TestWebRtcIntegration:
 
     def test_ice_candidate_exchange(self):
         # setup
-        client1 = self._create_client()
-        client2 = self._create_client()
+        client1 = self._create_and_connect_client()
+        client2 = self._create_and_connect_client()
 
         self._join_pit(client1, self.PIT_ID)
         time.sleep(0.01)
@@ -113,9 +120,9 @@ class TestWebRtcIntegration:
 
     def test_webrtc_messages_only_sent_to_target_peer(self):
         # setup
-        client1 = self._create_client()
-        client2 = self._create_client()
-        client3 = self._create_client()
+        client1 = self._create_and_connect_client()
+        client2 = self._create_and_connect_client()
+        client3 = self._create_and_connect_client()
 
         self._join_pit(client1, self.PIT_ID)
         time.sleep(0.01)
@@ -146,7 +153,7 @@ class TestWebRtcIntegration:
 
     def test_webrtc_error_handling_for_invalid_peer(self):
         # setup
-        client1 = self._create_client()
+        client1 = self._create_and_connect_client()
 
         self._join_pit(client1, self.PIT_ID)
         time.sleep(0.01)
@@ -159,4 +166,24 @@ class TestWebRtcIntegration:
         # verify
         error_events = self._get_events_by_name(client1, "error")
         assert len(error_events) == 1
-        assert "Target peer non-existent-peer-id not found" in error_events[0]["args"][0]["message"]
+
+    def test_webrtc_error_handling_for_invalid_peer_id(self):
+        # setup
+        client1 = self._create_and_connect_client()
+
+        self._join_pit(client1, self.PIT_ID)
+        time.sleep(0.01)
+        client1.get_received()  # Clear join events
+
+        # Send offer to badly formatted peer id
+        offer_data = {"type": "offer", "sdp": "test-sdp"}
+        client1.emit(
+            SEND_OFFER_MESSAGE_NAME,
+            '{"this is not valid": "invalid-peer-id"}',
+            offer_data,
+        )
+
+        # verify
+        error_events = self._get_events_by_name(client1, "error")
+        assert len(error_events) == 1
+        assert error_events[0]["args"][0]["message"] == "Invalid snake ID"

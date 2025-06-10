@@ -1,11 +1,12 @@
 import uuid
 import argparse
-from flask import Flask, request
+from flask import Flask, Request, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
-from server.model import Pit, World
-from server.pit_manager import PitManager
+from server.model import SnakePit, World
+from server.model.snake import SnakeId
+from server.pit_manager import SnakePitManager
 from server.webrtc_manager import WebRtcManager
 from server.logger import get_logger
 
@@ -14,13 +15,36 @@ app = Flask(__name__)
 CORS(app, resources=r"/*", origins="*")
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+SocketId = str
 world = World()
-# hardcode a pit for testing
-pit = Pit(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
-world.add_pit(pit)
-
-pit_manager = PitManager(world)
+pit_manager = SnakePitManager(world)
 web_rtc_manager = WebRtcManager(world)
+
+# hardcode a pit for testing
+pit = SnakePit(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
+world.pits[pit.id] = pit
+
+
+def get_connection_id(request: Request) -> SocketId:
+    return request.sid  # type: ignore
+
+
+def parse_pit_id(pit_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(pit_id)
+    except ValueError:
+        raise ValueError("Invalid pit ID")
+
+
+def parse_snake_id(snake_id: str) -> SnakeId:
+    # socket.io sids are alphanumeric outside of - and _ characters
+    if (
+        not snake_id
+        or not snake_id.replace("-", "").replace("_", "").isalnum()
+    ):
+        raise ValueError("Invalid snake ID")
+
+    return SnakeId(snake_id)
 
 
 @socketio.on_error()
@@ -31,43 +55,50 @@ def error_handler(e):
 
 @socketio.on("connect")
 def on_connect():
-    query_params = request.args
-    pit_id = uuid.UUID(query_params.get("pitId"))
-    pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
+    pit_manager.handle_connect(get_connection_id(request))
 
 
 @socketio.on("disconnect")
 def on_disconnect(reason):
     _logger.info(f"Peer disconnected with reason: {reason}")
-    pit_manager.handle_disconnect(request.sid)  # type: ignore
+    pit_manager.handle_disconnect(get_connection_id(request))
 
 
-@socketio.on("joinPit")
+@socketio.on("create_snake_pit")
+def on_create_pit(pit_id):
+    pit_id = parse_pit_id(pit_id)
+    pit_manager.handle_create_pit(pit_id)
+
+
+@socketio.on("join_snake_pit")
 def on_join_pit(pit_id):
-    pit_id = uuid.UUID(pit_id)
-    pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
+    pit_id = parse_pit_id(pit_id)
+    pit_manager.handle_join_pit(get_connection_id(request), pit_id)
 
 
-@socketio.on("leavePit")
+@socketio.on("leave_snake_pit")
 def on_leave_pit():
-    pit_manager.handle_disconnect(request.sid)  # type: ignore
+    pit_manager.handle_leave_pit(get_connection_id(request))
 
 
-@socketio.on("sendOffer")
+@socketio.on("send_offer")
 def on_send_offer(to_peer_id, offer):
-    from_peer_id = request.sid  # type: ignore
+    from_peer_id = get_connection_id(request)
+    to_peer_id = parse_snake_id(to_peer_id)
     web_rtc_manager.send_offer(from_peer_id, to_peer_id, offer)
 
 
-@socketio.on("sendAnswer")
+@socketio.on("send_answer")
 def on_send_answer(to_peer_id, answer):
-    from_peer_id = request.sid  # type: ignore
+    from_peer_id = get_connection_id(request)
+    to_peer_id = parse_snake_id(to_peer_id)
     web_rtc_manager.send_answer(from_peer_id, to_peer_id, answer)
 
 
-@socketio.on("sendIceCandidate")
+@socketio.on("send_ice_candidate")
 def on_send_ice_candidate(to_peer_id, ice_candidate):
-    from_peer_id = request.sid  # type: ignore
+    from_peer_id = get_connection_id(request)
+    to_peer_id = parse_snake_id(to_peer_id)
     web_rtc_manager.send_ice_candidate(from_peer_id, to_peer_id, ice_candidate)
 
 

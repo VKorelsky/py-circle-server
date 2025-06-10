@@ -7,36 +7,44 @@
 1. Install [UV](https://docs.astral.sh/uv/)
 2. `$ uv run serve`
 
+### Testing
+
+- Run all tests: `uv run pytest`
+- Run specific test: `uv run pytest tests/test_pit_manager.py`
+
 ### Socket.io events
 
 ### Client to server
 
-##### Connection
+##### Connection Management
 
-- Connect with query param: `?pitId=<uuid>` (auto-joins pit)
+- **connect**: Automatically assigns unique snake ID and display name
+- **create_snake_pit**, payload: `{"pit_id": "697d8c94-cee3-4a99-a3b6-b7cced7927fc"}`
+- **join_snake_pit**, payload: `{"pit_id": "697d8c94-cee3-4a99-a3b6-b7cced7927fc"}`  
+- **leave_snake_pit**: No payload (leaves current pit)
 
-##### Pit management
+##### WebRTC Signaling
 
-- `joinPit` with pit_id parameter
-- `leavePit`
-
-##### WebRTC
-
-- `sendOffer` with parameters: to_peer_id, offer
-- `sendAnswer` with parameters: to_peer_id, answer  
-- `sendIceCandidate` with parameters: to_peer_id, ice_candidate
+- **send_offer**, payload: `{"to_peer_id": "socket_id_123", "offer": {...}}`
+- **send_answer**, payload: `{"to_peer_id": "socket_id_123", "answer": {...}}`
+- **send_ice_candidate**, payload: `{"to_peer_id": "socket_id_123", "ice_candidate": {...}}`
 
 ### Server to client
 
-##### Pit management
-- `newRoomMember` with new_peer_id
-- `room_member_left` with leaving_peer_id object
+##### Connection & Pit Management
 
-##### WebRTC
+- **connected**, payload: `{"display_name": "striped-sahara-cobra"}`
+- **pit_created**, payload: `{"pit_id": "697d8c94-cee3-4a99-a3b6-b7cced7927fc"}`
+- **pit_joined**, payload: `{"pit_id": "697d8c94-cee3-4a99-a3b6-b7cced7927fc"}`
+- **new_room_member**, payload: `{"new_peer_id": "socket_id_123", "new_peer_display_name": "glossy-amazon-viper"}`
+- **room_member_left**, payload: `{"leaving_peer_id": "socket_id_123"}`
 
-- `newOffer` with fromPeerId and offer
-- `newAnswer` with fromPeerId and answer
-- `newIceCandidate` with fromPeerId and newIceCandidate
+##### WebRTC Signaling
+
+- **new_offer**, payload: `{"fromPeerId": "socket_id_123", "offer": {...}}`
+- **new_answer**, payload: `{"fromPeerId": "socket_id_123", "answer": {...}}`
+- **new_ice_candidate**, payload: `{"fromPeerId": "socket_id_123", "newIceCandidate": {...}}`
 
 ##### Errors
-- `{"event": "error", "message": "<error_message>" }` 
+
+- **error**, payload: `{"message": "Pit does not exist"}`
