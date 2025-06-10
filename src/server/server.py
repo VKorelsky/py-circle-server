@@ -4,7 +4,7 @@ from flask import Flask, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
-from server.model import Pit, World
+from server.model import Pit, Snake, World
 from server.pit_manager import PitManager
 from server.webrtc_manager import WebRtcManager
 from server.logger import get_logger
@@ -31,9 +31,8 @@ def error_handler(e):
 
 @socketio.on("connect")
 def on_connect():
-    query_params = request.args
-    pit_id = uuid.UUID(query_params.get("pitId"))
-    pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
+    new_snake = Snake()
+    emit("test_event", {"id": new_snake.id})
 
 
 @socketio.on("disconnect")
