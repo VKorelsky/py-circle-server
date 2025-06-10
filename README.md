@@ -15,10 +15,10 @@
 
 - Connect with query param: `?pitId=<uuid>` (auto-joins pit)
 
-##### Pit management
+##### SnakePit management
 
-- `joinPit` with pit_id parameter
-- `leavePit`
+- `joinSnakePit` with pit_id parameter
+- `leaveSnakePit`
 
 ##### WebRTC
 
@@ -28,7 +28,7 @@
 
 ### Server to client
 
-##### Pit management
+##### SnakePit management
 - `newRoomMember` with new_peer_id
 - `room_member_left` with leaving_peer_id object
 

@@ -3,7 +3,7 @@ import time
 from server.server import app, socketio
 
 NEW_ROOM_MEMBER_MESSAGE_NAME = "newRoomMember"
-JOIN_PIT_MESSAGE_NAME = "joinPit"
+JOIN_PIT_MESSAGE_NAME = "joinSnakePit"
 SEND_OFFER_MESSAGE_NAME = "sendOffer"
 NEW_OFFER_MESSAGE_NAME = "newOffer"
 SEND_ANSWER_MESSAGE_NAME = "sendAnswer"
@@ -13,12 +13,6 @@ NEW_ICE_CANDIDATE_MESSAGE_NAME = "newIceCandidate"
 
 
 class TestWebRtcIntegration:
-    """Integration tests for WebRTC message routing between peers.
-
-    These tests treat the server as a black box and only use the Socket.IO API
-    to verify that WebRTC messages are properly routed between peers in the same pit.
-    """
-
     PIT_ID = "697d8c94-cee3-4a99-a3b6-b7cced7927fc"
 
     def _get_peer_ids_from_events(self, events):
@@ -28,7 +22,7 @@ class TestWebRtcIntegration:
             if event["name"] == NEW_ROOM_MEMBER_MESSAGE_NAME
         ]
 
-    def _create_client(self):
+    def _create_and_connect_client(self):
         client = socketio.test_client(app)
         client.get_received()  # Clear initial connection events to avoid interference with test assertions
         return client
@@ -42,8 +36,8 @@ class TestWebRtcIntegration:
 
     def test_exchange_offer_answer(self):
         # setup
-        client1 = self._create_client()
-        client2 = self._create_client()
+        client1 = self._create_and_connect_client()
+        client2 = self._create_and_connect_client()
 
         self._join_pit(client1, self.PIT_ID)
         time.sleep(0.01)  # avoid out of order joining
@@ -86,8 +80,8 @@ class TestWebRtcIntegration:
 
     def test_ice_candidate_exchange(self):
         # setup
-        client1 = self._create_client()
-        client2 = self._create_client()
+        client1 = self._create_and_connect_client()
+        client2 = self._create_and_connect_client()
 
         self._join_pit(client1, self.PIT_ID)
         time.sleep(0.01)
@@ -119,9 +113,9 @@ class TestWebRtcIntegration:
 
     def test_webrtc_messages_only_sent_to_target_peer(self):
         # setup
-        client1 = self._create_client()
-        client2 = self._create_client()
-        client3 = self._create_client()
+        client1 = self._create_and_connect_client()
+        client2 = self._create_and_connect_client()
+        client3 = self._create_and_connect_client()
 
         self._join_pit(client1, self.PIT_ID)
         time.sleep(0.01)
@@ -152,7 +146,7 @@ class TestWebRtcIntegration:
 
     def test_webrtc_error_handling_for_invalid_peer(self):
         # setup
-        client1 = self._create_client()
+        client1 = self._create_and_connect_client()
 
         self._join_pit(client1, self.PIT_ID)
         time.sleep(0.01)

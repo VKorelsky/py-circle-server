@@ -1,11 +1,11 @@
 import uuid
 import argparse
-from flask import Flask, request
+from flask import Flask, Request, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
-from server.model import Pit, Snake, World
-from server.pit_manager import PitManager
+from server.model import SnakePit, Snake, World
+from server.pit_manager import SnakePitManager
 from server.webrtc_manager import WebRtcManager
 from server.logger import get_logger
 
@@ -14,13 +14,18 @@ app = Flask(__name__)
 CORS(app, resources=r"/*", origins="*")
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+SocketId = str
 world = World()
+pit_manager = SnakePitManager(world)
+web_rtc_manager = WebRtcManager(world)
+
 # hardcode a pit for testing
-pit = Pit(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
+pit = SnakePit(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
 world.add_pit(pit)
 
-pit_manager = PitManager(world)
-web_rtc_manager = WebRtcManager(world)
+
+def get_connection_id(request: Request) -> SocketId:
+    return request.sid  # type: ignore
 
 
 @socketio.on_error()
@@ -31,42 +36,47 @@ def error_handler(e):
 
 @socketio.on("connect")
 def on_connect():
-    new_snake = Snake()
-    emit("test_event", {"id": new_snake.id})
+    pit_manager.handle_connect(get_connection_id(request))
 
 
 @socketio.on("disconnect")
 def on_disconnect(reason):
     _logger.info(f"Peer disconnected with reason: {reason}")
-    pit_manager.handle_disconnect(request.sid)  # type: ignore
+    pit_manager.handle_disconnect(get_connection_id(request))
 
 
-@socketio.on("joinPit")
+@socketio.on("createSnakePit")
+def on_create_pit(pit_id):
+    pit_id = uuid.UUID(pit_id)
+    pit_manager.handle_create_pit(pit_id)
+
+
+@socketio.on("joinSnakePit")
 def on_join_pit(pit_id):
     pit_id = uuid.UUID(pit_id)
-    pit_manager.handle_join_pit(request.sid, pit_id)  # type: ignore
+    pit_manager.handle_join_pit(get_connection_id(request), pit_id)
 
 
-@socketio.on("leavePit")
+@socketio.on("leaveSnakePit")
 def on_leave_pit():
-    pit_manager.handle_disconnect(request.sid)  # type: ignore
+    pit_manager.handle_disconnect(get_connection_id(request))
 
 
 @socketio.on("sendOffer")
 def on_send_offer(to_peer_id, offer):
-    from_peer_id = request.sid  # type: ignore
+    from_peer_id = get_connection_id(request)
     web_rtc_manager.send_offer(from_peer_id, to_peer_id, offer)
 
 
 @socketio.on("sendAnswer")
 def on_send_answer(to_peer_id, answer):
-    from_peer_id = request.sid  # type: ignore
+    from_peer_id = get_connection_id(request)
     web_rtc_manager.send_answer(from_peer_id, to_peer_id, answer)
 
 
 @socketio.on("sendIceCandidate")
 def on_send_ice_candidate(to_peer_id, ice_candidate):
-    from_peer_id = request.sid  # type: ignore
+    from_peer_id = get_connection_id(request)
     web_rtc_manager.send_ice_candidate(from_peer_id, to_peer_id, ice_candidate)
 
 

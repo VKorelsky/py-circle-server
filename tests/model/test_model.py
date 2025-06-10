@@ -1,23 +1,26 @@
 import uuid
 import pytest
 
-from server.model import Snake, Pit, World
+from server.model import Snake, SnakePit, World
 
 
 class TestSnake:
     def test_init(self):
-        snake = Snake()
-        assert snake.id is not None
+        snake = Snake("12")
+        assert snake.id == "12"
+        assert snake.display_name is not None
 
     def test_str(self):
-        snake = Snake()
-        assert str(snake) == f"PitMember(id={snake.id})"
+        snake = Snake("12")
+        assert (
+            str(snake) == f"SnakePitMember(id={snake.id}, display_name={snake.display_name})"
+        )
 
 
-class TestPit:
+class TestSnakeSnakePit:
     @pytest.fixture()
     def pit(self):
-        return Pit()
+        return SnakePit()
 
     def test_init_default_id(self, pit):
         assert isinstance(pit.id, uuid.UUID)
@@ -25,7 +28,7 @@ class TestPit:
 
     def test_init_custom_id(self):
         custom_id = uuid.uuid4()
-        pit = Pit(custom_id)
+        pit = SnakePit(custom_id)
         assert pit.id == custom_id
         assert pit.members == {}
 
@@ -37,8 +40,8 @@ class TestPit:
         pit.add_member(member2)
 
         assert len(pit.members) == 2
-        assert pit.get_member(member1.id) == member1
-        assert pit.get_member(member2.id) == member2
+        assert pit.get_member(member1.display_name) == member1
+        assert pit.get_member(member2.display_name) == member2
 
     def test_remove_member(self, pit):
         member1 = self._snake()
@@ -47,15 +50,15 @@ class TestPit:
         pit.add_member(member1)
         pit.add_member(member2)
 
-        pit.remove_member(member1.id)
+        pit.remove_member(member1.display_name)
 
         assert len(pit.members) == 1
-        assert pit.get_member(member1.id) is None
+        assert pit.get_member(member1.display_name) is None
 
-        assert pit.get_member(member2.id) == member2
+        assert pit.get_member(member2.display_name) == member2
 
     def test_remove_nonexistent_member_does_not_raise_key_error(self):
-        pit = Pit()
+        pit = SnakePit()
         pit.remove_member("nonexistent")  # Should not raise KeyError
 
     def test_get_member_not_exists(self, pit):
@@ -68,11 +71,11 @@ class TestPit:
 
         result = str(pit)
 
-        assert f"Pit(id={str(pit.id)}" in result
-        assert member.id in result
+        assert f"SnakePit(id={str(pit.id)}" in result
+        assert member.display_name in result
 
     def _snake(self):
-        return Snake()
+        return Snake("snake_id")
 
 
 class TestWorld:
@@ -98,9 +101,9 @@ class TestWorld:
         member = self._snake()
         world.add_member_to_pit(pit.id, member)
 
-        assert member.id in pit
-        assert pit.get_member(member.id) is member
-        assert world.memberships[member.id] is pit
+        assert member.display_name in pit
+        assert pit.get_member(member.display_name) is member
+        assert world.memberships[member.display_name] is pit
 
     def test_add_member_to_non_existent_pit(self, world):
         member = self._snake()
@@ -115,15 +118,15 @@ class TestWorld:
 
         world.add_member_to_pit(pit.id, member)
 
-        assert member.id in pit
-        assert pit.get_member(member.id) is member
-        assert world.memberships[member.id] is pit
+        assert member.display_name in pit
+        assert pit.get_member(member.display_name) is member
+        assert world.memberships[member.display_name] is pit
 
-        world.remove_member_from_pit(member.id)
+        world.remove_member_from_pit(member.display_name)
 
-        assert member.id not in pit
-        assert pit.get_member(member.id) is None
-        assert member.id not in world.memberships
+        assert member.display_name not in pit
+        assert pit.get_member(member.display_name) is None
+        assert member.display_name not in world.memberships
 
     def test_get_pit_not_exists(self, world):
         nonexistent_id = uuid.uuid4()
@@ -141,8 +144,8 @@ class TestWorld:
         world.add_member_to_pit(first_pit.id, first_member)
         world.add_member_to_pit(second_pit.id, second_member)
 
-        assert world.get_pit_by_pit_member(first_member.id) is first_pit
-        assert world.get_pit_by_pit_member(second_member.id) is second_pit
+        assert world.get_pit_by_pit_member(first_member.display_name) is first_pit
+        assert world.get_pit_by_pit_member(second_member.display_name) is second_pit
 
     def test_get_pit_by_pit_member_not_exists(self, world):
         nonexistent_pit_member_id = str(uuid.uuid4())
@@ -168,7 +171,7 @@ class TestWorld:
         assert pit2 in world_as_list
 
     def _snake(self):
-        return Snake()
+        return Snake("id")
 
     def _pit(self):
-        return Pit(uuid.uuid4())
+        return SnakePit(uuid.uuid4())
