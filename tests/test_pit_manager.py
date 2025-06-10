@@ -1,5 +1,3 @@
-import time
-
 from server.server import app, socketio
 
 NEW_ROOM_MEMBER_MESSAGE_NAME = "newRoomMember"
@@ -13,5 +11,5 @@ class TestSnakePitManager:
     def test_receive_id_upon_connection(self):
         client = socketio.test_client(app)
         received = client.get_received()
-        
+
         print(received)

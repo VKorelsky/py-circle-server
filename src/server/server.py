@@ -4,7 +4,7 @@ from flask import Flask, Request, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
-from server.model import SnakePit, Snake, World
+from server.model import SnakePit, World
 from server.pit_manager import SnakePitManager
 from server.webrtc_manager import WebRtcManager
 from server.logger import get_logger
@@ -21,7 +21,7 @@ web_rtc_manager = WebRtcManager(world)
 
 # hardcode a pit for testing
 pit = SnakePit(uuid.UUID("697d8c94-cee3-4a99-a3b6-b7cced7927fc"))
-world.add_pit(pit)
+world.pits[pit.id] = pit
 
 
 def get_connection_id(request: Request) -> SocketId:

@@ -2,12 +2,13 @@ from random import choice
 
 SnakeId = str
 
+
 class Snake:
     def __init__(self, id):
         self.id: SnakeId = id
-        self.display_name: SnakeId = self._generate_random_name()
+        self.display_name: str = self._generate_random_name()
 
-    def _generate_random_name(self) -> SnakeId:
+    def _generate_random_name(self) -> str:
         visual_traits = [
             "striped",
             "spotted",

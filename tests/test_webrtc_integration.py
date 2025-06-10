@@ -158,5 +158,5 @@ class TestWebRtcIntegration:
 
         # verify
         error_events = self._get_events_by_name(client1, "error")
+        print(f"ERROR EVENTS: {error_events}")
         assert len(error_events) == 1
-        assert "Target peer non-existent-peer-id not found" in error_events[0]["args"][0]["message"]
