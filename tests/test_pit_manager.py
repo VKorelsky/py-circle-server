@@ -2,11 +2,13 @@ import uuid
 from server.server import app, socketio
 from typing import Any, TypedDict
 
-NEW_ROOM_MEMBER_MESSAGE_NAME = "newRoomMember"
-JOIN_PIT_MESSAGE_NAME = "joinSnakePit"
-CREATE_SNAKE_PIT_MESSAGE_NAME = "createSnakePit"
 CONNECTED_MESSAGE_NAME = "connected"
+CREATE_SNAKE_PIT_MESSAGE_NAME = "createSnakePit"
+ERROR_MESSAGE_NAME = "error"
+JOIN_PIT_MESSAGE_NAME = "joinSnakePit"
+NEW_ROOM_MEMBER_MESSAGE_NAME = "newRoomMember"
 PIT_CREATED_MESSAGE_NAME = "pit_created"
+ROOM_MEMBER_LEFT_MESSAGE_NAME = "room_member_left"
 
 
 class SocketIOMessage(TypedDict):
@@ -77,3 +79,33 @@ class TestSnakePitManager:
             client1_notifs[0]["args"][0]["new_peer_display_name"]
             == client2_display_name
         )
+
+    def test_join_pit_with_invalid_pit_id(self):
+        client = self._client()
+        client.get_received().clear()
+
+        self._join_pit(client, "invalid-pit-id")
+        notifs = self._get_events_by_name(client, ERROR_MESSAGE_NAME)
+        assert len(notifs) == 1
+
+    def test_client_disconnect(self):
+        # Setup: Create a pit and join it
+        client = self._client()
+        self._create_pit(client)
+        pit_created_events = self._get_events_by_name(client, PIT_CREATED_MESSAGE_NAME)
+        pit_id = pit_created_events[0]["args"][0]["pit_id"]
+        self._join_pit(client, pit_id)
+
+        # Create second client and join pit
+        client2 = self._client()
+        self._join_pit(client2, pit_id)
+
+        # Disconnect first client
+        client.disconnect()
+
+        # Verify second client received room_member_left notification
+        client2_notifs = self._get_events_by_name(
+            client2, ROOM_MEMBER_LEFT_MESSAGE_NAME
+        )
+        assert len(client2_notifs) == 1
+        assert "leaving_peer_id" in client2_notifs[0]["args"][0]
