@@ -167,3 +167,24 @@ class TestWebRtcIntegration:
         error_events = self._get_events_by_name(client1, "error")
         print(f"ERROR EVENTS: {error_events}")
         assert len(error_events) == 1
+
+    def test_webrtc_error_handling_for_invalid_peer_id(self):
+        # setup
+        client1 = self._create_and_connect_client()
+
+        self._join_pit(client1, self.PIT_ID)
+        time.sleep(0.01)
+        client1.get_received()  # Clear join events
+
+        # Send offer to badly formatted peer id
+        offer_data = {"type": "offer", "sdp": "test-sdp"}
+        client1.emit(
+            SEND_OFFER_MESSAGE_NAME,
+            '{"this is not valid": "invalid-peer-id"}',
+            offer_data,
+        )
+
+        # verify
+        error_events = self._get_events_by_name(client1, "error")
+        assert len(error_events) == 1
+        assert error_events[0]["args"][0]["message"] == "Invalid snake ID"

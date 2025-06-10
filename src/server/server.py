@@ -5,6 +5,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 
 from server.model import SnakePit, World
+from server.model.snake import SnakeId
 from server.pit_manager import SnakePitManager
 from server.webrtc_manager import WebRtcManager
 from server.logger import get_logger
@@ -28,6 +29,21 @@ def get_connection_id(request: Request) -> SocketId:
     return request.sid  # type: ignore
 
 
+def parse_pit_id(pit_id: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(pit_id)
+    except ValueError:
+        raise ValueError("Invalid pit ID")
+
+
+def parse_snake_id(snake_id: str) -> SnakeId:
+    # Socket.IO SIDs are typically at most 20 characters long
+    if len(snake_id) >= 20:
+        raise ValueError("Invalid snake ID")
+
+    return SnakeId(snake_id)
+
+
 @socketio.on_error()
 def error_handler(e):
     _logger.error(f"Socket.IO error occurred: {str(e)}")
@@ -47,13 +63,13 @@ def on_disconnect(reason):
 
 @socketio.on("createSnakePit")
 def on_create_pit(pit_id):
-    pit_id = uuid.UUID(pit_id)
+    pit_id = parse_pit_id(pit_id)
     pit_manager.handle_create_pit(pit_id)
 
 
 @socketio.on("joinSnakePit")
 def on_join_pit(pit_id):
-    pit_id = uuid.UUID(pit_id)
+    pit_id = parse_pit_id(pit_id)
     pit_manager.handle_join_pit(get_connection_id(request), pit_id)
 
 
@@ -65,18 +81,21 @@ def on_leave_pit():
 @socketio.on("sendOffer")
 def on_send_offer(to_peer_id, offer):
     from_peer_id = get_connection_id(request)
+    to_peer_id = parse_snake_id(to_peer_id)
     web_rtc_manager.send_offer(from_peer_id, to_peer_id, offer)
 
 
 @socketio.on("sendAnswer")
 def on_send_answer(to_peer_id, answer):
     from_peer_id = get_connection_id(request)
+    to_peer_id = parse_snake_id(to_peer_id)
     web_rtc_manager.send_answer(from_peer_id, to_peer_id, answer)
 
 
 @socketio.on("sendIceCandidate")
 def on_send_ice_candidate(to_peer_id, ice_candidate):
     from_peer_id = get_connection_id(request)
+    to_peer_id = parse_snake_id(to_peer_id)
     web_rtc_manager.send_ice_candidate(from_peer_id, to_peer_id, ice_candidate)
 
 

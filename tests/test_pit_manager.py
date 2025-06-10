@@ -21,8 +21,8 @@ class TestSnakePitManager:
     def _join_pit(self, client, pit_id):
         client.emit(JOIN_PIT_MESSAGE_NAME, pit_id)
 
-    def _create_pit(self, client):
-        client.emit(CREATE_SNAKE_PIT_MESSAGE_NAME, str(uuid.uuid4()))
+    def _create_pit(self, client, pit_id=str(uuid.uuid4())):
+        client.emit(CREATE_SNAKE_PIT_MESSAGE_NAME, pit_id)
 
     def _client(self):
         return socketio.test_client(app)
@@ -46,6 +46,15 @@ class TestSnakePitManager:
 
         assert len(pit_created_events) == 1
         assert "pit_id" in pit_created_events[0]["args"][0].keys()
+
+    def test_create_pit_with_invalid_pit_id(self):
+        client = self._client()
+        client.get_received().clear()
+
+        self._create_pit(client, "invalid-pit-id")
+        notifs = self._get_events_by_name(client, ERROR_MESSAGE_NAME)
+        assert len(notifs) == 1
+        assert notifs[0]["args"][0]["message"] == "Invalid pit ID"
 
     def test_join_pit(self):
         # client 1
