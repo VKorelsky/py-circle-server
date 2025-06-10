@@ -13,12 +13,6 @@ NEW_ICE_CANDIDATE_MESSAGE_NAME = "newIceCandidate"
 
 
 class TestWebRtcIntegration:
-    """Integration tests for WebRTC message routing between peers.
-
-    These tests treat the server as a black box and only use the Socket.IO API
-    to verify that WebRTC messages are properly routed between peers in the same pit.
-    """
-
     PIT_ID = "697d8c94-cee3-4a99-a3b6-b7cced7927fc"
 
     def _get_peer_ids_from_events(self, events):
