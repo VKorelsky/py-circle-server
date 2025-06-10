@@ -35,6 +35,7 @@
 
 - **connected**, payload: `{"display_name": "striped-sahara-cobra"}`
 - **pit_created**, payload: `{"pit_id": "697d8c94-cee3-4a99-a3b6-b7cced7927fc"}`
+- **pit_joined**, payload: `{"pit_id": "697d8c94-cee3-4a99-a3b6-b7cced7927fc"}`
 - **new_room_member**, payload: `{"new_peer_id": "socket_id_123", "new_peer_display_name": "glossy-amazon-viper"}`
 - **room_member_left**, payload: `{"leaving_peer_id": "socket_id_123"}`
 

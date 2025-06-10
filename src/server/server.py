@@ -37,10 +37,9 @@ def parse_pit_id(pit_id: str) -> uuid.UUID:
 
 
 def parse_snake_id(snake_id: str) -> SnakeId:
-    # socket.io sids are typically 20 characters long and alphanumeric (outside of - and _ characters)
+    # socket.io sids are alphanumeric outside of - and _ characters
     if (
         not snake_id
-        or len(snake_id) > 20
         or not snake_id.replace("-", "").replace("_", "").isalnum()
     ):
         raise ValueError("Invalid snake ID")
@@ -65,38 +64,38 @@ def on_disconnect(reason):
     pit_manager.handle_disconnect(get_connection_id(request))
 
 
-@socketio.on("createSnakePit")
+@socketio.on("create_snake_pit")
 def on_create_pit(pit_id):
     pit_id = parse_pit_id(pit_id)
     pit_manager.handle_create_pit(pit_id)
 
 
-@socketio.on("joinSnakePit")
+@socketio.on("join_snake_pit")
 def on_join_pit(pit_id):
     pit_id = parse_pit_id(pit_id)
     pit_manager.handle_join_pit(get_connection_id(request), pit_id)
 
 
-@socketio.on("leaveSnakePit")
+@socketio.on("leave_snake_pit")
 def on_leave_pit():
-    pit_manager.handle_disconnect(get_connection_id(request))
+    pit_manager.handle_leave_pit(get_connection_id(request))
 
 
-@socketio.on("sendOffer")
+@socketio.on("send_offer")
 def on_send_offer(to_peer_id, offer):
     from_peer_id = get_connection_id(request)
     to_peer_id = parse_snake_id(to_peer_id)
     web_rtc_manager.send_offer(from_peer_id, to_peer_id, offer)
 
 
-@socketio.on("sendAnswer")
+@socketio.on("send_answer")
 def on_send_answer(to_peer_id, answer):
     from_peer_id = get_connection_id(request)
     to_peer_id = parse_snake_id(to_peer_id)
     web_rtc_manager.send_answer(from_peer_id, to_peer_id, answer)
 
 
-@socketio.on("sendIceCandidate")
+@socketio.on("send_ice_candidate")
 def on_send_ice_candidate(to_peer_id, ice_candidate):
     from_peer_id = get_connection_id(request)
     to_peer_id = parse_snake_id(to_peer_id)

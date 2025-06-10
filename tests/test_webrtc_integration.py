@@ -3,14 +3,14 @@ from typing import Any, TypedDict
 
 from server.server import app, socketio
 
-NEW_ROOM_MEMBER_MESSAGE_NAME = "newRoomMember"
-JOIN_PIT_MESSAGE_NAME = "joinSnakePit"
-SEND_OFFER_MESSAGE_NAME = "sendOffer"
-NEW_OFFER_MESSAGE_NAME = "newOffer"
-SEND_ANSWER_MESSAGE_NAME = "sendAnswer"
-NEW_ANSWER_MESSAGE_NAME = "newAnswer"
-SEND_ICE_CANDIDATE_MESSAGE_NAME = "sendIceCandidate"
-NEW_ICE_CANDIDATE_MESSAGE_NAME = "newIceCandidate"
+NEW_ROOM_MEMBER_MESSAGE_NAME = "new_room_member"
+JOIN_PIT_MESSAGE_NAME = "join_snake_pit"
+SEND_OFFER_MESSAGE_NAME = "send_offer"
+NEW_OFFER_MESSAGE_NAME = "new_offer"
+SEND_ANSWER_MESSAGE_NAME = "send_answer"
+NEW_ANSWER_MESSAGE_NAME = "new_answer"
+SEND_ICE_CANDIDATE_MESSAGE_NAME = "send_ice_candidate"
+NEW_ICE_CANDIDATE_MESSAGE_NAME = "new_ice_candidate"
 
 
 class SocketIOMessage(TypedDict):

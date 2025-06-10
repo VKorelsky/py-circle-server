@@ -17,7 +17,7 @@ class WebRtcManager:
         )
 
         self._assert_peers_in_same_pit(from_peer_id, to_peer_id)
-        emit("newOffer", {"fromPeerId": from_peer_id, "offer": offer}, to=to_peer_id)
+        emit("new_offer", {"fromPeerId": from_peer_id, "offer": offer}, to=to_peer_id)
 
     def send_answer(self, from_peer_id: SnakeId, to_peer_id: SnakeId, answer):
         _logger.info(
@@ -25,7 +25,7 @@ class WebRtcManager:
         )
 
         self._assert_peers_in_same_pit(from_peer_id, to_peer_id)
-        emit("newAnswer", {"fromPeerId": from_peer_id, "answer": answer}, to=to_peer_id)
+        emit("new_answer", {"fromPeerId": from_peer_id, "answer": answer}, to=to_peer_id)
 
     def send_ice_candidate(
         self, from_peer_id: SnakeId, to_peer_id: SnakeId, ice_candidate
@@ -36,7 +36,7 @@ class WebRtcManager:
 
         self._assert_peers_in_same_pit(from_peer_id, to_peer_id)
         emit(
-            "newIceCandidate",
+            "new_ice_candidate",
             {"fromPeerId": from_peer_id, "newIceCandidate": ice_candidate},
             to=to_peer_id,
         )
